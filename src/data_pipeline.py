@@ -46,3 +46,19 @@ def parse_iob_to_chunks(sentences):
         if chunk['text'] != '': chunks.append(chunk)
         
     return chunks            
+
+# Auxiliar function for "extract_negative_spans"
+def is_invalid_chunk(span_tags):
+    return
+    
+# Function to extract no-chunks
+def extract_negative_spans(sentences, n_needed=500):
+    return
+    
+# Function to mix the chunks with the non-chunks
+def balance_and_sample(labeled_chunks, negative_spans):
+    return
+    
+# Principal function
+def get_phrasal_data(lang='en'):
+    return
