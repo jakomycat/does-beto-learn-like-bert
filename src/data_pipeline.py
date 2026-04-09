@@ -11,3 +11,38 @@ def load_raw_dataset(lang='en'):
         raise ValueError('Its not implemented')
         
     return dataset['train']
+
+# IOB to chunks
+def parse_iob_to_chunks(sentences):
+    chunks = []
+    
+    labels = ['ADJP', 'ADVP', 'CONJP', 'INTJ', 'LST', 'NP', 'PP', 'PRT', 'QP', 'SBAR', 'VP']
+    
+    # Iterate in sentences
+    for tokens, chunk_tags in zip(sentences['tokens'], sentences['chunk_tags']):
+        
+        chunk = {'text': '', 'label': ''} # Reset chunk
+        
+        for token, tag in zip(tokens, chunk_tags):
+            
+            # Case B-XX
+            if tag % 2 == 1:
+                if chunk['text'] != '': chunks.append(chunk) # Add found chunk
+                
+                label = labels[int(tag // 2)] # Get label
+                chunk = {'text': token, 'label': label} # Initialize chunk
+                
+            # Case I-XX
+            elif tag % 2 == 0 and tag != 0:
+                chunk['text'] += ' ' + token
+                
+            # Case O
+            elif tag == 0:
+                if chunk['text'] != '':
+                    chunks.append(chunk) # Add found chunk
+                    chunk = {'text': '', 'label': ''} # Clear chunk
+                    
+        # Maybe a open chunk
+        if chunk['text'] != '': chunks.append(chunk)
+        
+    return chunks            
