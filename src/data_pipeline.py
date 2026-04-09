@@ -49,7 +49,30 @@ def parse_iob_to_chunks(sentences):
 
 # Auxiliar function for "extract_negative_spans"
 def is_invalid_chunk(span_tags):
-    return
+    # Case O is in tags
+    if 0 in span_tags:
+        return True
+    
+    first_B = None
+    for span in span_tags:
+        # Get first B-XX
+        if first_B == None and span % 2 == 1:
+            first_B = span
+            
+        # Case two B-XX
+        if first_B != span and span % 2 == 1:
+            return True
+        
+    # Doesn't exist B-XX
+    if first_B == None:
+        return True
+    
+    # Case when this begin with I-XX
+    if first_B != span_tags[0]:
+        return True
+    
+    # In other case this is valid chunk
+    return False
     
 # Function to extract no-chunks
 def extract_negative_spans(sentences, n_needed=500):
