@@ -128,5 +128,20 @@ def balance_and_sample(labeled_chunks, negative_spans, n_needed=3000, seed=7):
     return final_list
     
 # Principal function
-def get_phrasal_data(lang='en'):
-    return
+def get_phrasal_data(lang='en', n_chunks=3000, n_negative_spans=500):
+    # This is the overall process
+    print('1/4 - Loading dataset')
+    sentences = load_raw_dataset(lang)
+    
+    print('2/4 - Getting valid chunks')
+    labeled_chunks = parse_iob_to_chunks(sentences)
+    
+    print('3/4 - Getting invalid chunks (noice)')
+    negative_spans = extract_negative_spans(sentences, n_needed=n_negative_spans)
+    
+    print('4/4 - Balancing and mixing the final dataset')
+    final_data = balance_and_sample(labeled_chunks, negative_spans, n_needed=n_chunks)
+    
+    print(f'Pipeline completed, total samples: {len(final_data)}')
+    
+    return final_data
