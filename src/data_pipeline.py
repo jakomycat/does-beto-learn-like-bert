@@ -113,8 +113,19 @@ def extract_negative_spans(sentences, n_needed=500, max_len=4, seed=7):
     return negative_spans
     
 # Function to mix the chunks with the non-chunks
-def balance_and_sample(labeled_chunks, negative_spans):
-    return
+def balance_and_sample(labeled_chunks, negative_spans, n_needed=3000, seed=7):
+    random.seed(seed)
+    
+    # Get a random sample of chunks
+    sample_chunks = random.sample(labeled_chunks, n_needed)
+    
+    # Combine the lists
+    final_list = sample_chunks + negative_spans
+    
+    # Shuffle the list
+    random.shuffle(final_list) # This function is in-place
+    
+    return final_list
     
 # Principal function
 def get_phrasal_data(lang='en'):
