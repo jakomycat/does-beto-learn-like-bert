@@ -1,5 +1,7 @@
 from datasets import load_dataset
 
+import random
+
 # Function to get raw data
 def load_raw_dataset(lang='en'):
     # This is for BERT
@@ -75,8 +77,40 @@ def is_invalid_chunk(span_tags):
     return False
     
 # Function to extract no-chunks
-def extract_negative_spans(sentences, n_needed=500):
-    return
+def extract_negative_spans(sentences, n_needed=500, max_len=4, seed=7):
+    negative_spans = []
+    num_sentences = len(sentences['tokens'])
+    
+    random.seed(seed) 
+    
+    while len(negative_spans) < n_needed:
+        chunk_text = ''
+        
+        # Get a random token
+        s_idx = random.randint(0, num_sentences - 1)
+        tokens = sentences['tokens'][s_idx]
+        tags = sentences['chunk_tags'][s_idx]
+        
+        # Avoid one-word sentences
+        if len(tokens) < 2:
+            continue
+        
+        # Get a random split
+        start_idx = random.randint(0, len(tokens) - 2)
+        
+        max_end = min(start_idx + max_len, len(tokens) - 1) # This is to prevent exceeding the limit
+        end_idx = random.randint(start_idx + 1, max_end)
+        
+        chunk_text += " ".join(tokens[start_idx + 1:end_idx + 1]) # Get full text
+        
+        tags_to_validate = tags[start_idx:end_idx + 1]
+        if is_invalid_chunk(tags_to_validate):
+            negative_spans.append({
+                'text': chunk_text,
+                'label': 'None'
+            })
+        
+    return negative_spans
     
 # Function to mix the chunks with the non-chunks
 def balance_and_sample(labeled_chunks, negative_spans):
