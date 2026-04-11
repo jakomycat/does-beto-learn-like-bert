@@ -42,6 +42,9 @@ def parse_iob_to_chunks(sentences):
             elif tag == 0:
                 if chunk['text'] != '':
                     chunks.append(chunk) # Add found chunk
+                    
+                    chunks.append({'text': token, 'label': 'O'} ) # Add no-chunk / label 'O'
+                    
                     chunk = {'text': '', 'label': ''} # Clear chunk
                     
         # Maybe a open chunk
@@ -113,22 +116,37 @@ def extract_negative_spans(sentences, n_needed=500, max_len=4, seed=7):
     return negative_spans
     
 # Function to mix the chunks with the non-chunks
-def balance_and_sample(labeled_chunks, negative_spans, n_needed=3000, seed=7):
+def balance_and_sample(labeled_chunks, negative_spans=None, n_chunks=3000, n_no_chunks=500, seed=7):
+    """
+    If negative_spans is None this indicates that it will use original paper's implementation
+    """
     random.seed(seed)
     
-    # Get a random sample of chunks
-    sample_chunks = random.sample(labeled_chunks, n_needed)
+    # Original implementation
+    if negative_spans is None:
+        # Separate chunks by label
+        non_o_chunks = [chunk for chunk in labeled_chunks if chunk['label'] != 'O']
+        o_chunks = [chunk for chunk in labeled_chunks if chunk['label'] == 'O']
+        
+        # Sample from each group
+        sample_non_o = random.sample(non_o_chunks, n_chunks)
+        sample_o = random.sample(o_chunks, n_no_chunks)
+        
+        # Combine and shuffle
+        final_list = sample_non_o + sample_o
     
-    # Combine the lists
-    final_list = sample_chunks + negative_spans
-    
-    # Shuffle the list
-    random.shuffle(final_list) # This function is in-place
+    # Own extension
+    else:
+        # Get a random sample of chunks
+        sample_chunks = random.sample(labeled_chunks, n_chunks)
+        
+        # Combine the lists
+        final_list = sample_chunks + negative_spans
     
     return final_list
     
 # Principal function
-def get_phrasal_data(lang='en', n_chunks=3000, n_negative_spans=500):
+def get_phrasal_data(lang='en', n_chunks=3000, n_no_chunks=500, use_original=True):
     # This is the overall process
     print('1/4 - Loading dataset')
     sentences = load_raw_dataset(lang)
@@ -136,11 +154,15 @@ def get_phrasal_data(lang='en', n_chunks=3000, n_negative_spans=500):
     print('2/4 - Getting valid chunks')
     labeled_chunks = parse_iob_to_chunks(sentences)
     
-    print('3/4 - Getting invalid chunks (noice)')
-    negative_spans = extract_negative_spans(sentences, n_needed=n_negative_spans)
-    
+    if use_original:
+        print('3/4 - Skipping negative span extraction (original paper mode)')
+        negative_spans = None
+    else:
+        print('3/4 - Getting invalid chunks (noise)')
+        negative_spans = extract_negative_spans(sentences, n_needed=n_no_chunks)
+     
     print('4/4 - Balancing and mixing the final dataset')
-    final_data = balance_and_sample(labeled_chunks, negative_spans, n_needed=n_chunks)
+    final_data = balance_and_sample(labeled_chunks, negative_spans, n_chunks=n_chunks)
     
     print(f'Pipeline completed, total samples: {len(final_data)}')
     
