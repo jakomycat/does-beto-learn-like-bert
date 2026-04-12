@@ -62,7 +62,7 @@ def get_span_representation(span_samples, model, tokenizer, device):
             
             # Concatenate
             span_representation = torch.cat([h_first, h_final, product, difference], dim=0)
-            layer_representations.append(span_representation)
+            layer_representations.append(span_representation.cpu().numpy())
         
         representations.append({
             'representation': layer_representations,
