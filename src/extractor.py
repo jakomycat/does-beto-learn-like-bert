@@ -23,11 +23,23 @@ def get_span_representation(span_samples, model, tokenizer, device):
     representations = []
     
     for sample in span_samples:
-        text = sample['text']
         label = sample['label']
+        sentence = sample['sentence']
+        idx_start = sample['start']
+        idx_end = sample['end']
         
         # Tokenize
-        inputs = tokenizer(text, return_tensors='pt')
+        inputs = tokenizer(
+            sentence.split(),
+            return_tensors='pt',
+            is_split_into_words=True
+        )
+        
+        # Map word indices to BERT token indices
+        word_ids = inputs.word_ids()
+        bert_start = word_ids.index(idx_start)
+        bert_end = len(word_ids) - 1 - word_ids[::-1].index(idx_end)
+        
         inputs = {k: v.to(device) for k, v in inputs.items()}
         
         # Get hidden states
@@ -41,8 +53,8 @@ def get_span_representation(span_samples, model, tokenizer, device):
             hidden_states = hidden_states.squeeze(0)
             
             # Get first and last hidden state
-            h_first = hidden_states[1] # Exclude [CLS]
-            h_final = hidden_states[-2] # Exclude [SEP]
+            h_first = hidden_states[bert_start] # Exclude [CLS]
+            h_final = hidden_states[bert_end] # Exclude [SEP]
             
             # Get element-wise product and difference
             product = h_first * h_final
