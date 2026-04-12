@@ -22,30 +22,43 @@ def parse_iob_to_chunks(sentences):
     
     # Iterate in sentences
     for tokens, chunk_tags in zip(sentences['tokens'], sentences['chunk_tags']):
+        sentence = ' '.join(tokens)  # Get full sentence
+        chunk = {'text': '', 'label': '', 'sentence': sentence, 'start': 0, 'end': 0} # Reset chunk
         
-        chunk = {'text': '', 'label': ''} # Reset chunk
-        
-        for token, tag in zip(tokens, chunk_tags):
+        for i, (token, tag) in enumerate(zip(tokens, chunk_tags)):
             
             # Case B-XX
             if tag % 2 == 1:
                 if chunk['text'] != '': chunks.append(chunk) # Add found chunk
                 
                 label = labels[int(tag // 2)] # Get label
-                chunk = {'text': token, 'label': label} # Initialize chunk
+                chunk = {
+                    'text': token,
+                    'label': label,
+                    'sentence': sentence,
+                    'start': i,
+                    'end': i
+                    } # Initialize chunk
                 
             # Case I-XX
             elif tag % 2 == 0 and tag != 0:
                 chunk['text'] += ' ' + token
+                chunk['end'] = i # Update end index
                 
             # Case O
             elif tag == 0:
                 if chunk['text'] != '':
                     chunks.append(chunk) # Add found chunk
                     
-                    chunks.append({'text': token, 'label': 'O'} ) # Add no-chunk / label 'O'
+                    chunks.append({
+                        'text': token,
+                        'label': 'O',
+                        'sentence': sentence,
+                        'start': i,
+                        'end': i
+                    }) # Add no-chunk / label 'O'
                     
-                    chunk = {'text': '', 'label': ''} # Clear chunk
+                    chunk = {'text': '', 'label': '', 'sentence': sentence, 'start': 0, 'end': 0} # Clear chunk
                     
         # Maybe a open chunk
         if chunk['text'] != '': chunks.append(chunk)
