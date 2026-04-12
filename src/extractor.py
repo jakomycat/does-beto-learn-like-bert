@@ -19,7 +19,7 @@ def load_model_and_tokenizer(lang, device):
     return model, tokenizer
 
 # Function to get span representation (obviously)
-def get_span_representation(span_samples, model, tokenizer):
+def get_span_representation(span_samples, model, tokenizer, device):
     representations = []
     
     for sample in span_samples:
@@ -28,6 +28,7 @@ def get_span_representation(span_samples, model, tokenizer):
         
         # Tokenize
         inputs = tokenizer(text, return_tensors='pt')
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         
         # Get hidden states
         with torch.no_grad():
@@ -36,8 +37,8 @@ def get_span_representation(span_samples, model, tokenizer):
         layer_representations = []
         
         # Get hidden states for each layer - without the embeddings
-        for hidden_states in outputs.hidden_states[1:-1]:
-            hidden_states = outputs.last_hidden_state.squeeze(0)
+        for hidden_states in outputs.hidden_states:
+            hidden_states = hidden_states.squeeze(0)
             
             # Get first and last hidden state
             h_first = hidden_states[1] # Exclude [CLS]
