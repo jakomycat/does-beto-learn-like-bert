@@ -4,11 +4,25 @@ import os
 
 from sklearn.manifold import TSNE
 
+LABEL_COLORS = {
+    'PP':    '#8B0000',
+    'VP':    '#FF4500',
+    'ADJP':  '#FFA500',
+    'NP':    '#FFD700',
+    'ADVP':  '#ADFF2F',
+    'SBAR':  '#90EE90',
+    'PRT':   '#00CED1',
+    'CONJP': '#4169E1',
+    'INTJ':  '#FF69B4',
+    'LST':   '#A0522D',
+    'QP':    '#20B2AA',
+    'O':     '#9370DB',
+    'None':  '#9370DB',
+}
+
 def plot_tsne_layers(span_representations, layers, output_filename='tsne_span_representations.png'):
     labels = [s['label'] for s in span_representations] # Get labels
     unique_labels = list(set(labels))
-    
-    colors = plt.get_cmap("tab10")(np.arange(len(unique_labels))) # Palette color
 
     # Graph configuration
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
@@ -22,13 +36,13 @@ def plot_tsne_layers(span_representations, layers, output_filename='tsne_span_re
         vectors_2d = tsne.fit_transform(vectors)
         
         # Plot each class separately to assign colors and legends
-        for label, color in zip(unique_labels, colors):
+        for label in unique_labels:
             mask = [l == label for l in labels]
             ax.scatter(
                 vectors_2d[mask, 0],
                 vectors_2d[mask, 1],
                 label=label,
-                color=color,
+                color=LABEL_COLORS.get(label),
                 alpha=0.6,
                 s=12
             )
