@@ -5,19 +5,19 @@ import os
 from sklearn.manifold import TSNE
 
 LABEL_COLORS = {
-    'PP':    '#8B0000',
-    'VP':    '#FF4500',
-    'ADJP':  '#FFA500',
-    'NP':    '#FFD700',
-    'ADVP':  '#ADFF2F',
-    'SBAR':  '#90EE90',
-    'PRT':   '#00CED1',
-    'CONJP': '#4169E1',
+    'PP':    '#9e0142',
+    'VP':    '#dd4a4c',
+    'ADJP':  '#f98e52',
+    'NP':    '#fed481',
+    'ADVP':  '#ffffbe',
+    'SBAR':  '#d6ee9b',
+    'PRT':   '#86cfa5',
+    'CONJP': '#3d95b8',
     'INTJ':  '#FF69B4',
     'LST':   '#A0522D',
-    'QP':    '#20B2AA',
-    'O':     '#9370DB',
-    'None':  '#9370DB',
+    'QP':    "#8420B2",
+    'O':     '#5e4fa2',
+    'None':  '#5e4fa2',
 }
 
 def plot_tsne_layers(span_representations, layers, output_filename='tsne_span_representations.png'):
