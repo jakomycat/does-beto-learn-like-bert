@@ -122,8 +122,11 @@ def extract_negative_spans(sentences, n_needed=500, max_len=4, seed=7):
         tags_to_validate = tags[start_idx:end_idx + 1]
         if is_invalid_chunk(tags_to_validate):
             negative_spans.append({
-                'text': chunk_text,
-                'label': 'None'
+                'text': ' '.join(tokens[start_idx:end_idx + 1]),
+                'label': 'None',
+                'sentence': ' '.join(tokens),
+                'start': start_idx,
+                'end': end_idx
             })
         
     return negative_spans
@@ -150,8 +153,11 @@ def balance_and_sample(labeled_chunks, negative_spans=None, n_chunks=3000, n_no_
     
     # Own extension
     else:
+        # Get chunks
+        non_o_chunks = [chunk for chunk in labeled_chunks if chunk['label'] != 'O']
+        
         # Get a random sample of chunks
-        sample_chunks = random.sample(labeled_chunks, n_chunks)
+        sample_chunks = random.sample(non_o_chunks, n_chunks)
         
         # Combine the lists
         final_list = sample_chunks + negative_spans
