@@ -60,7 +60,7 @@ def plot_tsne_layers(span_representations, layers, output_filename='tsne_span_re
     plt.tight_layout()
     
     # Create results/figures directory
-    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'results', 'figures')
+    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'results', 'figures')
     os.makedirs(output_dir, exist_ok=True)
     
     output_path = os.path.join(output_dir, output_filename)
