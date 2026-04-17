@@ -35,3 +35,32 @@ def download_seteval_data(task_name):
     except requests.exceptions.RequestException as e:
         print(f'Network error while downloading \'{task_name}\': {e}')
         
+# Function
+def read_senteval_file(task_name):
+    base = Path(__file__).resolve()
+    senteval_route = base.parent.parent.parent / 'data' / 'SentEval' / f'{task_name}.txt'
+    
+    data = {'train':[], 'validation':[], 'test':[]}
+    with open(senteval_route, 'r', encoding='utf-8') as f:
+        for line in f:
+            split_type, classification, text = line.split('\t') # This return a list with 3 elements
+            
+            if split_type == 'tr':
+                data['train'].append({
+                    'text': text.replace('\n', ''),
+                    'classification': classification
+                })
+                
+            elif split_type == 'va':
+                data['validation'].append({
+                    'text': text.replace('\n', ''),
+                    'classification': classification
+                })
+                
+            elif split_type == 'te':
+                data['test'].append({
+                    'text': text.replace('\n', ''),
+                    'classification': classification
+                })
+    
+    return data
