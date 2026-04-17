@@ -58,3 +58,16 @@ def read_senteval_file(task_name):
                 test['labels'].append(label)
     
     return train, test, validation
+
+# Function to
+def encode_labels(train_labels, test_labels, validation_labels):
+    unique_labels = sorted(list(set(train_labels))) # Get every unique label
+    
+    label_to_id = {label:i for i, label in enumerate(unique_labels)}
+    id_to_label = {i:label for i, label in enumerate(unique_labels)}
+
+    train_encoded = [label_to_id[label] for label in train_labels]
+    test_encoded = [label_to_id[label] for label in test_labels]
+    val_encoded = [label_to_id[label] for label in validation_labels]
+        
+    return (train_encoded, test_encoded, val_encoded), (label_to_id, id_to_label)
