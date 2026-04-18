@@ -81,6 +81,13 @@ def load_probing_task(task_name):
     train, test, validation = read_senteval_file(task_name)
     
     # Get data encoded
-    all_data_packaged = encode_labels(train['labels'], test['labels'], validation['labels'])
+    (train_enc, test_enc, val_enc), dicts = encode_labels(train['labels'], test['labels'], validation['labels'])
+    
+    all_data_packaged = {
+        'train': {'sentences': train['data'], 'labels': train_enc},
+        'dev': {'sentences': validation['data'], 'labels': val_enc},
+        'test': {'sentences': test['data'], 'labels': test_enc},
+        'dicts': dicts
+    }
     
     return all_data_packaged
