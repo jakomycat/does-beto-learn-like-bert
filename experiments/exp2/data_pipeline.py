@@ -71,3 +71,16 @@ def encode_labels(train_labels, test_labels, validation_labels):
     val_encoded = [label_to_id[label] for label in validation_labels]
         
     return (train_encoded, test_encoded, val_encoded), (label_to_id, id_to_label)
+
+# Function to run pipeline
+def load_probing_task(task_name):
+    # Verify if data exist
+    download_seteval_data('past_present')
+    
+    # Read data
+    train, test, validation = read_senteval_file('past_present')
+    
+    # Get data encoded
+    all_data_packaged = encode_labels(train['labels'], test['labels'], validation['labels'])
+    
+    return all_data_packaged
