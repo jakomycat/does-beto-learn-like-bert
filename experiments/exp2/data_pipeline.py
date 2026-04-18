@@ -75,10 +75,10 @@ def encode_labels(train_labels, test_labels, validation_labels):
 # Function to run pipeline
 def load_probing_task(task_name):
     # Verify if data exist
-    download_seteval_data('past_present')
+    download_seteval_data(task_name)
     
     # Read data
-    train, test, validation = read_senteval_file('past_present')
+    train, test, validation = read_senteval_file(task_name)
     
     # Get data encoded
     all_data_packaged = encode_labels(train['labels'], test['labels'], validation['labels'])
