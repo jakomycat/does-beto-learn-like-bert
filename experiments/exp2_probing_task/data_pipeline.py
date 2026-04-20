@@ -85,7 +85,7 @@ def load_probing_task(task_name):
     
     all_data_packaged = {
         'train': {'sentences': train['data'], 'labels': train_enc},
-        'dev': {'sentences': validation['data'], 'labels': val_enc},
+        'val': {'sentences': validation['data'], 'labels': val_enc},
         'test': {'sentences': test['data'], 'labels': test_enc},
         'dicts': dicts
     }
