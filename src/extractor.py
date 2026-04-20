@@ -1,5 +1,6 @@
 from transformers import AutoModel, AutoTokenizer
 import torch
+import numpy as np
 
 # Function to get pre-trained model
 def load_model_and_tokenizer(lang, device):
@@ -72,20 +73,19 @@ def get_span_representation(span_samples, model, tokenizer, device):
     return representations
 
 # Function to get [CLS] token
-def get_cls_token(sentence, model, tokenizer, device):
-    cls_tokens = [] # For saves CLS for each layer
+def get_cls_token(sentences, model, tokenizer, device, layer_idx=None):
+    all_cls = [] # Get CLS token for each sentence on sentences
     
-    inputs = tokenizer(
-        sentence,
-        return_tensors='pt'
-    )
-    
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-    
-    with torch.no_grad():
-        outputs = model(**inputs)
+    for sentence in sentences:
+        inputs = tokenizer(sentence, return_tensors='pt')
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         
-    for hidden_state in outputs.hidden_states:
-        cls_tokens.append(hidden_state[0, 0, :].cpu().numpy()) # Save CLS token
+        with torch.no_grad():
+            outputs = model(**inputs)
         
-    return cls_tokens
+        if layer_idx is not None:
+            all_cls.append(outputs.hidden_states[layer_idx][0, 0, :].cpu().numpy())
+        else:
+            all_cls.append([hs[0, 0, :].cpu().numpy() for hs in outputs.hidden_states])
+    
+    return np.array(all_cls)
