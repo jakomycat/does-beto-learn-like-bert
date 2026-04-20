@@ -70,3 +70,22 @@ def get_span_representation(span_samples, model, tokenizer, device):
         })
         
     return representations
+
+# Function to get [CLS] token
+def get_cls_token(sentence, model, tokenizer, device):
+    cls_tokens = [] # For saves CLS for each layer
+    
+    inputs = tokenizer(
+        sentence,
+        return_tensors='pt'
+    )
+    
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+    
+    with torch.no_grad():
+        outputs = model(**inputs)
+        
+    for hidden_state in outputs.hidden_states:
+        cls_tokens.append(hidden_state[0, 0, :].cpu().numpy()) # Save CLS token
+        
+    return cls_tokens
