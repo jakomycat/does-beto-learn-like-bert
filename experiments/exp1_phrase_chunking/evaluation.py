@@ -49,6 +49,6 @@ def evaluate_kmeans_nmi(span_representations, output_filename=None, seed=7):
     else:
         print(f'The data was successfully saved at {output_filename}.csv')
         
-    df.to_csv(output_filename, index=False)
+    df.to_csv(route_to_save, index=False)
         
     return nmi_scores
