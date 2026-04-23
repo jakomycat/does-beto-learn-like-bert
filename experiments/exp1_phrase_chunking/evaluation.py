@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score
@@ -25,7 +26,13 @@ def evaluate_kmeans_nmi(span_representations, num_layers=12, output_filename=Non
         nmi = normalized_mutual_info_score(true_labels, clusters)
         nmi_scores.append(nmi)
         
-    # Save this data in csv
+    # Get directory to save this data
+    base = Path(__file__).resolve()
+    route = base.parent.parent.parent / 'results' / 'csv'
+    
+    route.mkdir(parents=True, exist_ok=True)
+        
+    # Organize data in pandas
     data = {
         'layer': range(len(nmi_scores)),
         'nmi_score': nmi_scores
@@ -33,6 +40,14 @@ def evaluate_kmeans_nmi(span_representations, num_layers=12, output_filename=Non
     
     df = pd.DataFrame(data)
     
+    # Save
+    route_to_save = route / f'{output_filename}.csv'
+    
+    if route_to_save.exists():
+        print(f'The data was overwritten at {output_filename}.csv')
+    else:
+        print(f'The data was successfully saved at {output_filename}.csv')
+        
     df.to_csv(output_filename, index=False)
         
     return nmi_scores
