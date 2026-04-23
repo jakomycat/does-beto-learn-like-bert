@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import os
+from pathlib import Path
 
 from sklearn.manifold import TSNE
 
@@ -20,7 +20,7 @@ LABEL_COLORS = {
     'None':  '#5e4fa2',
 }
 
-def plot_tsne_layers(span_representations, layers, output_filename='tsne_span_representations.png'):
+def plot_tsne_layers(span_representations, layers, output_filename=None):
     labels = [s['label'] for s in span_representations] # Get labels
     unique_labels = list(set(labels))
 
@@ -60,11 +60,16 @@ def plot_tsne_layers(span_representations, layers, output_filename='tsne_span_re
     plt.tight_layout()
     
     # Create results/figures directory
-    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'results', 'figures')
-    os.makedirs(output_dir, exist_ok=True)
+    base = Path(__file__).resolve()
+    route = base.parent.parent.parent / 'results' / 'figures'
     
-    output_path = os.path.join(output_dir, output_filename)
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    plt.show()
+    route.mkdir(parents=True, exist_ok=True)
     
-    print(f'Figure saved at: {output_path}')
+    route_to_save = route / f'{output_filename}.png'
+    
+    if route_to_save.exists():
+        print(f'The figure was overwritten at {output_filename}.png')
+    else:
+        print(f'The figure was successfully saved at {output_filename}.png')
+    
+    plt.savefig(route_to_save, dpi=300, bbox_inches='tight')
