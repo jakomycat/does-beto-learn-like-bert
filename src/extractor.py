@@ -86,6 +86,7 @@ def get_cls_token(sentences, model, tokenizer, device, layer_idx=None):
         if layer_idx is not None:
             all_cls.append(outputs.hidden_states[layer_idx][0, 0, :].cpu().numpy())
         else:
-            all_cls.append([hs[0, 0, :].cpu().numpy() for hs in outputs.hidden_states])
+            cls_all_layers = np.stack([hs[0, 0, :].cpu().numpy() for hs in outputs.hidden_states])
+            all_cls.append(cls_all_layers)
     
     return np.array(all_cls)
