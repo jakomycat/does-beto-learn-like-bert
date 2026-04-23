@@ -6,8 +6,9 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score
 
 # Function to get NMI
-def evaluate_kmeans_nmi(span_representations, num_layers=12, output_filename=None, seed=7):
+def evaluate_kmeans_nmi(span_representations, output_filename=None, seed=7):
     true_labels = [s['label'] for s in span_representations] # Real labels
+    num_layers = len(span_representations[0]['representation'])
     
     # Get n_clusters - This is how many labels there are
     unique_labels = list(set(true_labels))
