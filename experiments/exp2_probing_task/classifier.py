@@ -39,7 +39,7 @@ def train_probe(model, train_loader, val_loader, device, max_epochs=100, patienc
     
     # Variable for Early Stopping
     best_val_loss = float('inf')
-    best_model_weights = None
+    best_model_weights = copy.deepcopy(model.state_dict())
     epochs_without_improvement = 0
     
     for epoch in range(max_epochs):
@@ -62,7 +62,7 @@ def train_probe(model, train_loader, val_loader, device, max_epochs=100, patienc
         
         # Validation
         model.eval()
-        dev_loss = 0.0
+        val_loss = 0.0
         
         with torch.no_grad():
             for batch_X, batch_y in val_loader:
@@ -120,11 +120,13 @@ def evaluate_layer(X_train, y_train, X_val, y_val, X_test, y_test, input_dim, nu
     
     with torch.no_grad():
         for batch_X, batch_y in test_loader:
+            batch_X, batch_y = batch_X.to(device), batch_y.to(device)
+            
             logits = model(batch_X)
             preds = torch.argmax(logits, dim=1)
             
             all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(batch_y.numpy())
+            all_labels.extend(batch_y.cpu().numpy())
             
     # Calculate accuracy and return this
     accuracy = accuracy_score(all_labels, all_preds)
