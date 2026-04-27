@@ -5,6 +5,8 @@ from torch.utils.data import TensorDataset, DataLoader
 
 from sklearn.metrics import accuracy_score
 
+from pathlib import Path
+import pandas as pd
 import copy
 
 # Single-layer perceptron
@@ -132,3 +134,49 @@ def evaluate_layer(X_train, y_train, X_val, y_val, X_test, y_test, input_dim, nu
     accuracy = accuracy_score(all_labels, all_preds)
     
     return accuracy
+
+def evaluate_all_layers(X_train, y_train, X_val, y_val, X_test, y_test, num_classes, device, task_name, output_filename):
+    num_layers = X_train.shape[1]
+    accuracies = []
+
+    for layer_idx in range(num_layers):
+        # Extract the specific layer for each split
+        X_train_layer = X_train[:, layer_idx, :]
+        X_val_layer = X_val[:, layer_idx, :]
+        X_test_layer = X_test[:, layer_idx, :]
+        
+        input_dim = X_train_layer.shape[1]
+        
+        accuracy = evaluate_layer(
+            X_train_layer,
+            y_train,
+            X_val_layer,
+            y_val,
+            X_test_layer,
+            y_test,
+            input_dim,
+            num_classes,
+            device
+        )
+        
+        accuracies.append(accuracy)
+
+    # Save results to CSV
+    base = Path(__file__).resolve()
+    csv_route = base.parent.parent.parent / 'results' / 'csv' / f'{output_filename}.csv'
+    csv_route.parent.mkdir(parents=True, exist_ok=True)
+
+    # Load existing CSV or create new DataFrame
+    if csv_route.exists():
+        df = pd.read_csv(csv_route, index_col=0)
+    else:
+        df = pd.DataFrame()
+
+    # Add/overwrite column for this task
+    df[task_name] = accuracies
+    df.index.name = 'layer'
+
+    df.to_csv(csv_route)
+    print(f'Results saved to {csv_route}.')
+
+    return accuracies
