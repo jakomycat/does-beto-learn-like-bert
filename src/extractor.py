@@ -82,12 +82,15 @@ def get_cls_token(sentences, model, tokenizer, device, task_name, split):
     
     route.parent.mkdir(parents=True, exist_ok=True) # Create directory if doesn't exist
     
+    all_cls = [] # Get CLS token for each sentence on sentences
+    
     # If .h5 file already exist
     if route.exists():
-        print(f'File {route} already exists.')
-        return None
-    
-    all_cls = [] # Get CLS token for each sentence on sentences
+        print(f'File {route} already exists, loading data.')
+        with h5py.File(route, 'r') as f:
+            all_cls = [f[f'sentence_{idx}'][:] for idx in range(len(f.keys()))]
+            
+        return np.array(all_cls)
         
     # Create file .h5 only if doesn't exist
     with h5py.File(route, 'x') as f:
