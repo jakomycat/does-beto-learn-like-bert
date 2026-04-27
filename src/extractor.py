@@ -1,6 +1,9 @@
 from transformers import AutoModel, AutoTokenizer
+
 import torch
+import h5py
 import numpy as np
+from pathlib import Path
 
 # Function to get pre-trained model
 def load_model_and_tokenizer(lang, device):
@@ -73,20 +76,36 @@ def get_span_representation(span_samples, model, tokenizer, device):
     return representations
 
 # Function to get [CLS] token
-def get_cls_token(sentences, model, tokenizer, device, layer_idx=None):
-    all_cls = [] # Get CLS token for each sentence on sentences
+def get_cls_token(sentences, model, tokenizer, device, task_name):
+    base = Path(__file__).resolve()
+    route = base.parent.parent / 'data' / 'cls_tokens' / f'cls_tokens_{task_name}.h5'
     
-    for sentence in sentences:
-        inputs = tokenizer(sentence, return_tensors='pt')
-        inputs = {k: v.to(device) for k, v in inputs.items()}
+    route.parent.mkdir(parents=True, exist_ok=True) # Create directory if doesn't exist
+    
+    # If .h5 file already exist
+    if route.exists():
+        print(f'File {route} already exists.')
+        return None
+    
+    all_cls = [] # Get CLS token for each sentence on sentences
         
-        with torch.no_grad():
-            outputs = model(**inputs)
-        
-        if layer_idx is not None:
-            all_cls.append(outputs.hidden_states[layer_idx][0, 0, :].cpu().numpy())
-        else:
+    # Create file .h5 only if doesn't exist
+    with h5py.File(route, 'x') as f:
+        for idx, sentence in enumerate(sentences):
+            inputs = tokenizer(sentence, return_tensors='pt')
+            inputs = {k: v.to(device) for k, v in inputs.items()}
+            
+            with torch.no_grad():
+                outputs = model(**inputs)
+            
+            # Get all layers
             cls_all_layers = np.stack([hs[0, 0, :].cpu().numpy() for hs in outputs.hidden_states])
             all_cls.append(cls_all_layers)
+            
+            # Save in .h5 file
+            ds = f.create_dataset(f'sentence_{idx}', data=cls_all_layers)
+            ds.attrs['text'] = sentence # Save sentence as metadata
+            
+    print(f'CLS tokens successfully stored in {route}.')
     
     return np.array(all_cls)
