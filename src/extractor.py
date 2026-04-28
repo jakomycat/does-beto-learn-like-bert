@@ -2,6 +2,7 @@ from transformers import AutoModel, AutoTokenizer
 
 import torch
 import h5py
+from tqdm import tqdm
 import numpy as np
 from pathlib import Path
 
@@ -76,39 +77,68 @@ def get_span_representation(span_samples, model, tokenizer, device):
     return representations
 
 # Function to get [CLS] token
-def get_cls_token(sentences, model, tokenizer, device, task_name, split):
+def get_cls_token(sentences, model, tokenizer, device, task_name, split, batch_size=32):
     base = Path(__file__).resolve()
     route = base.parent.parent / 'data' / 'cls_tokens' / f'cls_tokens_{task_name}_{split}.h5'
-    
-    route.parent.mkdir(parents=True, exist_ok=True) # Create directory if doesn't exist
-    
-    all_cls = [] # Get CLS token for each sentence on sentences
-    
-    # If .h5 file already exist
+
+    route.parent.mkdir(parents=True, exist_ok=True)
+
+    # If .h5 file already exists, load and return
     if route.exists():
-        print(f'File {route} already exists, loading data.')
         with h5py.File(route, 'r') as f:
-            all_cls = [f[f'sentence_{idx}'][:] for idx in range(len(f.keys()))]
-            
-        return np.array(all_cls)
-        
-    # Create file .h5 only if doesn't exist
+            return f['cls_tokens'][:]
+
+    # Get dimensions from model config
+    # n_layers = num_hidden_layers + 1
+    n_layers    = getattr(model.config, 'num_hidden_layers',
+                  getattr(model.config, 'num_layers', 12)) + 1
+    hidden_size = model.config.hidden_size
+    n_sentences = len(sentences)
+
+    # Create .h5 file only if it doesn't exist
     with h5py.File(route, 'x') as f:
-        for idx, sentence in enumerate(sentences):
-            inputs = tokenizer(sentence, return_tensors='pt')
+
+        # Pre-allocate dataset — one single contiguous block
+        ds = f.create_dataset(
+            'cls_tokens',
+            shape=(n_sentences, n_layers, hidden_size),
+            dtype=np.float16,
+            compression='lzf',
+            chunks=(min(batch_size, n_sentences), n_layers, hidden_size)
+        )
+
+        # Save sentences as metadata
+        dt = h5py.string_dtype(encoding='utf-8')
+        f.create_dataset('sentences', data=np.array(sentences, dtype=dt))
+
+        # Process sentences in batches
+        for i in tqdm(range(0, n_sentences, batch_size), desc='Extracting CLS tokens'):
+            batch_sentences = sentences[i : i + batch_size]
+
+            # Tokenize batch
+            inputs = tokenizer(
+                batch_sentences,
+                return_tensors='pt',
+                padding=True,
+                truncation=True,
+                max_length=tokenizer.model_max_length
+            )
             inputs = {k: v.to(device) for k, v in inputs.items()}
-            
+
+            # Get hidden states
             with torch.no_grad():
-                outputs = model(**inputs)
-            
-            # Get all layers
-            cls_all_layers = np.stack([hs[0, 0, :].cpu().numpy() for hs in outputs.hidden_states])
-            all_cls.append(cls_all_layers)
-            
-            # Save in .h5 file
-            ds = f.create_dataset(f'sentence_{idx}', data=cls_all_layers)
-            ds.attrs['text'] = sentence # Save sentence as metadata
-            
+                outputs = model(**inputs, output_hidden_states=True)
+
+            # Extract [CLS] token from each layer and stack
+            batch_cls = torch.stack([
+                hs[:, 0, :] for hs in outputs.hidden_states
+            ], dim=1).half().cpu().numpy()
+
+            # Write batch to disk
+            ds[i : i + len(batch_sentences)] = batch_cls
+
     print(f'CLS tokens successfully stored in {route}.')
-    
-    return np.array(all_cls)
+
+    # Read from disk and return
+    with h5py.File(route, 'r') as f:
+        return f['cls_tokens'][:]
