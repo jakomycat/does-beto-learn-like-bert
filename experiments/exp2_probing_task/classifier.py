@@ -21,9 +21,9 @@ class ProbeClassifier(nn.Module):
         return output
     
 # Prepare data
-def create_dataloader(X, y, batch_size=32, is_train=False):
-    X_tensor = torch.tensor(X, dtype=torch.float32)
-    y_tensor = torch.tensor(y, dtype=torch.long)
+def create_dataloader(X, y, device, batch_size=256, is_train=False):
+    X_tensor = torch.tensor(X, dtype=torch.float32, device=device)
+    y_tensor = torch.tensor(y, dtype=torch.long, device=device)
     
     dataset = TensorDataset(X_tensor, y_tensor)
     
@@ -36,7 +36,7 @@ def create_dataloader(X, y, batch_size=32, is_train=False):
     return dataloader
 
 # Loop of train
-def train_probe(model, train_loader, val_loader, device, max_epochs=100, patience=5):
+def train_probe(model, train_loader, val_loader, max_epochs=100, patience=5):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     
@@ -52,9 +52,7 @@ def train_probe(model, train_loader, val_loader, device, max_epochs=100, patienc
         train_loss = 0.0
         
         for batch_X, batch_y in train_loader:
-            batch_X, batch_y = batch_X.to(device), batch_y.to(device)
-            
-            optimizer.zero_grad() # Clean mathematic memory
+            optimizer.zero_grad(set_to_none=True) # Clean mathematic memory
             
             prediction = model(batch_X)
             loss = criterion(prediction, batch_y)
@@ -71,8 +69,6 @@ def train_probe(model, train_loader, val_loader, device, max_epochs=100, patienc
         
         with torch.no_grad():
             for batch_X, batch_y in val_loader:
-                batch_X, batch_y = batch_X.to(device), batch_y.to(device)
-                
                 # Only calculate the loss
                 prediction = model(batch_X)
                 loss = criterion(prediction, batch_y)
@@ -97,7 +93,8 @@ def train_probe(model, train_loader, val_loader, device, max_epochs=100, patienc
         })
     
         if epochs_without_improvement >= patience:
-            print(f'\nEarly stopping triggered at epoch {epoch+1}')
+            epoch_iterator.write(f"\nEarly stopping triggered at epoch {epoch+1}")
+            epoch_iterator.close()
             break
         
     # Load the best weights
@@ -107,9 +104,9 @@ def train_probe(model, train_loader, val_loader, device, max_epochs=100, patienc
 
 #
 def evaluate_layer(X_train, y_train, X_val, y_val, X_test, y_test, input_dim, num_classes, device):
-    train_loader = create_dataloader(X_train, y_train, batch_size=32, is_train=True)
-    val_loader = create_dataloader(X_val, y_val, batch_size=32, is_train=False)
-    test_loader = create_dataloader(X_test, y_test, batch_size=32, is_train=False)
+    train_loader = create_dataloader(X_train, y_train, device, batch_size=256, is_train=True)
+    val_loader = create_dataloader(X_val, y_val, device, batch_size=256, is_train=False)
+    test_loader = create_dataloader(X_test, y_test, device, batch_size=256, is_train=False)
     
     model = ProbeClassifier(input_dim, num_classes).to(device)
     
@@ -118,7 +115,6 @@ def evaluate_layer(X_train, y_train, X_val, y_val, X_test, y_test, input_dim, nu
         model=model,
         train_loader=train_loader,
         val_loader=val_loader,
-        device=device,
         max_epochs=100,
         patience=5
     )
@@ -130,8 +126,6 @@ def evaluate_layer(X_train, y_train, X_val, y_val, X_test, y_test, input_dim, nu
     
     with torch.no_grad():
         for batch_X, batch_y in test_loader:
-            batch_X, batch_y = batch_X.to(device), batch_y.to(device)
-            
             logits = model(batch_X)
             preds = torch.argmax(logits, dim=1)
             
