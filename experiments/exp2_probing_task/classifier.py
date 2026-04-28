@@ -97,7 +97,7 @@ def train_probe(model, train_loader, val_loader, device, max_epochs=100, patienc
         })
     
         if epochs_without_improvement >= patience:
-            print(f'Early stopping triggered at epoch {epoch+1}')
+            print(f'\nEarly stopping triggered at epoch {epoch+1}')
             break
         
     # Load the best weights
