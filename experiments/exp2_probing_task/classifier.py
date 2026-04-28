@@ -6,6 +6,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import accuracy_score
 
 from pathlib import Path
+from tqdm import tqdm
 import pandas as pd
 import copy
 
@@ -44,7 +45,9 @@ def train_probe(model, train_loader, val_loader, device, max_epochs=100, patienc
     best_model_weights = copy.deepcopy(model.state_dict())
     epochs_without_improvement = 0
     
-    for epoch in range(max_epochs):
+    epoch_iterator = tqdm(range(max_epochs), desc='Training Probe')
+    
+    for epoch in epoch_iterator:
         model.train()
         train_loss = 0.0
         
@@ -86,10 +89,15 @@ def train_probe(model, train_loader, val_loader, device, max_epochs=100, patienc
         else: # The model didn't improve
             epochs_without_improvement += 1
             
-        # Show progress
-        print(f"Epoch {epoch+1:02d}/{max_epochs} | Train Loss: {avg_train_loss:.4f} | Validation Loss: {avg_val_loss:.4f} | Patience: {epochs_without_improvement}/{patience}")
+        # Update progress
+        epoch_iterator.set_postfix({
+            'Train Loss': f'{avg_train_loss:.4f}',
+            'Val Loss': f'{avg_val_loss:.4f}',
+            'Patience': f'{epochs_without_improvement}/{patience}'
+        })
     
         if epochs_without_improvement >= patience:
+            print(f'Early stopping triggered at epoch {epoch+1}')
             break
         
     # Load the best weights
