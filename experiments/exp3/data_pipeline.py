@@ -1,6 +1,8 @@
 import requests
 from pathlib import Path
 
+import pandas as pd
+
 # Function to dowload dataset from dropbox
 def download_sva_dataset():
     url = 'https://www.dropbox.com/scl/fi/fph8xsz683bne62rpxcjs/agr_50_mostcommon_10K.tsv.gz?e=3&rlkey=t7tgb87xd3073qzv7fghu7vm6&dl=1'
@@ -33,3 +35,38 @@ def download_sva_dataset():
     # Downloading error exception
     except requests.exceptions.RequestException as e:
         print(f'Network error while downloading \'{file_name}\': {e}')
+        
+# Function to load and split data
+def load_and_split_data(train_size=0.05, valid_size=0.05, max_seq_len=50):
+    base = Path(__file__).resolve()
+    route = base.parent.parent.parent / 'data' / 'SVADataset' / 'agr_50_mostcommon_10K.tsv.gz'
+    
+    if not route.exists():
+        print(f'The file doesn\'t exist in {route}.')
+        return None
+    
+    sva_data = pd.read_csv(route, sep='\t') # Get dataset
+    
+    # Filter by lenght
+    sva_data['word_count'] = sva_data['orig_sentence'].str.split().str.len()
+    sva_data = sva_data[sva_data['word_count'] <= max_seq_len].copy()
+    
+    sva_data = sva_data.sample(frac=1, random_state=123).reset_index(drop=True) # Shuffle data
+    
+    # Split
+    num_total = len(sva_data)
+    num_train = int(num_total * train_size)
+    num_valid = int(num_total * valid_size)
+    
+    train_df = sva_data.iloc[0:num_train]
+    valid_df = sva_data.iloc[num_train:num_train + num_valid]
+    test_df = sva_data.iloc[num_train + num_valid:]
+    
+    split_data = {
+        'train': train_df,
+        'valid': valid_df,
+        'test': test_df
+    }
+    
+    return split_data
+        
