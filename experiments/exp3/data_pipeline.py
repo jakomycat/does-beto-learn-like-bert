@@ -1,5 +1,6 @@
 import requests
 from pathlib import Path
+from tqdm import tqdm
 
 import pandas as pd
 
@@ -80,5 +81,43 @@ def create_binary_labels(datasets):
     for split_name in datasets:
         df = datasets[split_name]
         df['label'] = df['verb_pos'].map(pos_to_label)
+        
+    return datasets
+
+#
+def align_and_mask_datasets(datasets, tokenizer):
+    for split_name in datasets:
+        df = datasets[split_name]
+        
+        input_ids_list = []
+        token_idx_list = []
+
+        for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Processing {split_name}"):
+            # Get words and verb idx
+            words = row['orig_sentence'].split()
+            v_idx = int(row['verb_index']) - 1 
+            
+            # Tokenization
+            encoding = tokenizer(
+                words,
+                is_split_into_words=True,
+                return_offsets_mapping=True,
+                add_special_tokens=True
+            )
+            
+            word_ids = encoding.word_ids()
+            verb_token_idx = [i for i, wid in enumerate(word_ids) if wid == v_idx]
+            
+            input_ids = encoding['input_ids']
+            for i in verb_token_idx:
+                input_ids[i] = tokenizer.mask_token_id
+            
+            # Save data
+            input_ids_list.append(input_ids)
+            token_idx_list.append(verb_token_idx[0]) # Standard probing practice
+            
+        # Add results in dataframe
+        df['bert_input_ids'] = input_ids_list
+        df['verb_token_index'] = token_idx_list
         
     return datasets
