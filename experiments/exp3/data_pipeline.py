@@ -70,3 +70,15 @@ def load_and_split_data(train_size=0.05, valid_size=0.05, max_seq_len=50):
     
     return split_data
         
+# Function to classify verb in singular or plural
+def create_binary_labels(datasets):
+    pos_to_label = {
+        'VBZ': 0, # Singular
+        'VBP': 1 # Plural
+    }
+    
+    for split_name in datasets:
+        df = datasets[split_name]
+        df['label'] = df['verb_pos'].map(pos_to_label)
+        
+    return datasets
