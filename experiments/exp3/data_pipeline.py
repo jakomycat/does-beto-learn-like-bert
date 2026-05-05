@@ -121,3 +121,17 @@ def align_and_mask_datasets(datasets, tokenizer):
         df['verb_token_index'] = token_idx_list
         
     return datasets
+
+# Function to group test df into num of attractors
+def create_difficulty_buckets(test_df):
+    buckets = {}
+    
+    for n in range(5):
+        if n < 4:
+            # Buckets for 0, 1, 2, 3
+            buckets['n'] = test_df[test_df['n_intervening'] == n].copy()
+        else:
+            # Bucket for 4 or more
+            buckets['4+'] = test_df[test_df['n_intervening'] >= n].copy()
+    
+    return buckets
