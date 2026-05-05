@@ -129,7 +129,7 @@ def create_difficulty_buckets(test_df):
     for n in range(5):
         if n < 4:
             # Buckets for 0, 1, 2, 3
-            buckets['n'] = test_df[test_df['n_intervening'] == n].copy()
+            buckets[f'{n}'] = test_df[test_df['n_intervening'] == n].copy()
         else:
             # Bucket for 4 or more
             buckets['4+'] = test_df[test_df['n_intervening'] >= n].copy()
