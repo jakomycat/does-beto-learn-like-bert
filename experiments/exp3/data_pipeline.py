@@ -139,7 +139,7 @@ def create_difficulty_buckets(test_df):
 def run_full_pipeline(tokenizer):
     download_sva_dataset()
     
-    datasets = load_and_split_data(train_prop=0.09, valid_prop=0.01) # Values as Jawahar et al. 2019 propose
+    datasets = load_and_split_data(train_size=0.09, valid_size=0.01) # Values as Jawahar et al. 2019 propose
     datasets = create_binary_labels(datasets)
     datasets = align_and_mask_datasets(datasets, tokenizer)
     test_buckets = create_difficulty_buckets(datasets['test'])
