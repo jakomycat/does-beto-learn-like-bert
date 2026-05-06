@@ -144,7 +144,7 @@ def get_cls_token(sentences, model, tokenizer, device, task_name, split, batch_s
         return f['cls_tokens'][:]
     
 # Function to extract the [Mask] token vectors from each layer
-def extract_verb_features(input_ids_list, verb_idx, model, tokenizer, device, split, batch_size=32):
+def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, device, split, batch_size=32):
     base = Path(__file__).resolve()
     route = base.parent.parent / 'data' / 'features' / f'sva_features_{split}.h5'
     route.parent.mkdir(parents=True, exist_ok=True)
@@ -168,7 +168,7 @@ def extract_verb_features(input_ids_list, verb_idx, model, tokenizer, device, sp
         model.eval()
         for i in tqdm(range(0, n_sentences, batch_size), desc=f'Processing {split}'):
             batch_ids = input_ids_list[i : i + batch_size]
-            batch_idx = verb_idx[i : i + batch_size]
+            batch_idx = verb_idx_list[i : i + batch_size]
             
             batch_dicts = [{'input_ids': ids} for ids in batch_ids]
             
