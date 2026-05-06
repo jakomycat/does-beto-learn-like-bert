@@ -144,7 +144,7 @@ def get_cls_token(sentences, model, tokenizer, device, task_name, split, batch_s
         return f['cls_tokens'][:]
     
 # Function to extract the [Mask] token vectors from each layer
-def extract_verb_features(sentences, verb_idx, model, tokenizer, device, split, batch_size=32):
+def extract_verb_features(input_ids_list, verb_idx, model, tokenizer, device, split, batch_size=32):
     base = Path(__file__).resolve()
     route = base.parent.parent / 'data' / 'features' / f'sva_features_{split}.h5'
     route.parent.mkdir(parents=True, exist_ok=True)
@@ -155,7 +155,7 @@ def extract_verb_features(sentences, verb_idx, model, tokenizer, device, split, 
 
     n_layers = getattr(model.config, 'num_hidden_layers', 12) + 1
     hidden_size = model.config.hidden_size
-    n_sentences = len(sentences)
+    n_sentences = len(input_ids_list)
 
     with h5py.File(route, 'x') as f:
         ds = f.create_dataset(
@@ -167,21 +167,21 @@ def extract_verb_features(sentences, verb_idx, model, tokenizer, device, split, 
 
         model.eval()
         for i in tqdm(range(0, n_sentences, batch_size), desc=f'Processing {split}'):
-            batch_sentences = sentences[i : i + batch_size]
+            batch_ids = input_ids_list[i : i + batch_size]
             batch_idx = verb_idx[i : i + batch_size]
             
-            inputs = tokenizer(
-                batch_sentences,
-                return_tensors='pt',
+            batch_dicts = [{'input_ids': ids} for ids in batch_ids]
+            
+            inputs = tokenizer.pad(
+                batch_dicts,
                 padding=True,
-                truncation=True,
-                max_length=tokenizer.model_max_length
+                return_tensors='pt'
             ).to(device)
 
             with torch.no_grad():
                 outputs = model(**inputs, output_hidden_states=True)
             
-            batch_range = torch.arange(len(batch_sentences), device=device)
+            batch_range = torch.arange(len(batch_ids), device=device)
             target_idx = torch.tensor(batch_idx, device=device)
 
             # Extract [Mask] token
@@ -189,7 +189,7 @@ def extract_verb_features(sentences, verb_idx, model, tokenizer, device, split, 
                 hs[batch_range, target_idx, :] for hs in outputs.hidden_states
             ], dim=1).half().cpu().numpy()
 
-            ds[i : i + len(batch_sentences)] = batch_features
+            ds[i : i + len(batch_ids)] = batch_features
 
     print(f'SVA vectors avalaible at: {route}')
     
