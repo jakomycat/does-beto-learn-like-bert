@@ -142,3 +142,56 @@ def get_cls_token(sentences, model, tokenizer, device, task_name, split, batch_s
     # Read from disk and return
     with h5py.File(route, 'r') as f:
         return f['cls_tokens'][:]
+    
+# Function to extract the [Mask] token vectors from each layer
+def extract_verb_features(sentences, verb_idx, model, tokenizer, device, split, batch_size=32):
+    base = Path(__file__).resolve()
+    route = base.parent.parent / 'data' / 'features' / f'sva_features_{split}.h5'
+    route.parent.mkdir(parents=True, exist_ok=True)
+
+    if route.exists():
+        with h5py.File(route, 'r') as f:
+            return f['verb_outputs'][:]
+
+    n_layers = getattr(model.config, 'num_hidden_layers', 12) + 1
+    hidden_size = model.config.hidden_size
+    n_sentences = len(sentences)
+
+    with h5py.File(route, 'x') as f:
+        ds = f.create_dataset(
+            'verb_outputs',
+            shape=(n_sentences, n_layers, hidden_size),
+            dtype=np.float16,
+            compression='lzf'
+        )
+
+        model.eval()
+        for i in tqdm(range(0, n_sentences, batch_size), desc=f'Processing {split}'):
+            batch_sentences = sentences[i : i + batch_size]
+            batch_idx = verb_idx[i : i + batch_size]
+            
+            inputs = tokenizer(
+                batch_sentences,
+                return_tensors='pt',
+                padding=True,
+                truncation=True,
+                max_length=tokenizer.model_max_length
+            ).to(device)
+
+            with torch.no_grad():
+                outputs = model(**inputs, output_hidden_states=True)
+            
+            batch_range = torch.arange(len(batch_sentences), device=device)
+            target_idx = torch.tensor(batch_idx, device=device)
+
+            # Extract [Mask] token
+            batch_features = torch.stack([
+                hs[batch_range, target_idx, :] for hs in outputs.hidden_states
+            ], dim=1).half().cpu().numpy()
+
+            ds[i : i + len(batch_sentences)] = batch_features
+
+    print(f'SVA vectors avalaible at: {route}')
+    
+    with h5py.File(route, 'r') as f:
+        return f['verb_outputs'][:]
