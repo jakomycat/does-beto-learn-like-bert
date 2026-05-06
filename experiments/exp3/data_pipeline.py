@@ -92,7 +92,7 @@ def align_and_mask_datasets(datasets, tokenizer):
         input_ids_list = []
         token_idx_list = []
 
-        for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Processing {split_name}"):
+        for _, row in tqdm(df.iterrows(), total=len(df), desc=f'Processing {split_name}'):
             # Get words and verb idx
             words = row['orig_sentence'].split()
             v_idx = int(row['verb_index']) - 1 
