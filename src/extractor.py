@@ -5,6 +5,7 @@ import h5py
 from tqdm import tqdm
 import numpy as np
 from pathlib import Path
+import pandas as pd
 
 # Function to get pre-trained model
 def load_model_and_tokenizer(lang, device):
@@ -145,6 +146,8 @@ def get_cls_token(sentences, model, tokenizer, device, task_name, split, batch_s
     
 # Function to extract the [Mask] token vectors from each layer
 def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, device, split, batch_size=32):
+    verb_idx_list = list(verb_idx_list) # Always I need a list
+    
     base = Path(__file__).resolve()
     route = base.parent.parent / 'data' / 'features' / f'sva_features_{split}.h5'
     route.parent.mkdir(parents=True, exist_ok=True)
