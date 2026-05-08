@@ -142,6 +142,11 @@ def run_full_pipeline(tokenizer):
     datasets = load_and_split_data(train_size=0.09, valid_size=0.01) # Values as Jawahar et al. 2019 propose
     datasets = create_binary_labels(datasets)
     datasets = align_and_mask_datasets(datasets, tokenizer)
+    
+    # Reset index
+    for split in ['train', 'valid', 'test']:
+        datasets[split] = datasets[split].reset_index(drop=True)
+        
     test_buckets = create_difficulty_buckets(datasets['test'])
     
     return datasets, test_buckets
