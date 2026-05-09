@@ -5,7 +5,8 @@ import h5py
 from tqdm import tqdm
 import numpy as np
 from pathlib import Path
-import pandas as pd
+import threading
+import queue
 
 # Function to get pre-trained model
 def load_model_and_tokenizer(lang, device):
@@ -146,12 +147,13 @@ def get_cls_token(sentences, model, tokenizer, device, task_name, split, batch_s
     
 # Function to extract the [Mask] token vectors from each layer
 def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, device, split, batch_size=32):
-    verb_idx_list = list(verb_idx_list) # Always I need a list
-    
+    verb_idx_list = list(verb_idx_list)
+
     base = Path(__file__).resolve()
     route = base.parent.parent / 'data' / 'features' / f'sva_features_{split}.h5'
     route.parent.mkdir(parents=True, exist_ok=True)
 
+    # If .h5 file already exists, load and return
     if route.exists():
         with h5py.File(route, 'r') as f:
             return f['verb_outputs'][:]
@@ -159,6 +161,27 @@ def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, devic
     n_layers = getattr(model.config, 'num_hidden_layers', 12) + 1
     hidden_size = model.config.hidden_size
     n_sentences = len(input_ids_list)
+
+    # Sort by length to minimize padding
+    lengths = [len(ids) for ids in input_ids_list]
+    sorted_order = sorted(range(n_sentences), key=lambda i: lengths[i])
+    restore_order = [0] * n_sentences
+    for new_i, orig_i in enumerate(sorted_order):
+        restore_order[orig_i] = new_i
+
+    sorted_input_ids = [input_ids_list[i] for i in sorted_order]
+    sorted_verb_idx  = [verb_idx_list[i]  for i in sorted_order]
+
+    # Writer thread to overlap I/O with GPU processing
+    write_queue = queue.Queue(maxsize=4)
+
+    def writer_thread(f, ds, n_total):
+        written = 0
+        while written < n_total:
+            start_i, data = write_queue.get()
+            ds[start_i : start_i + len(data)] = data
+            written += len(data)
+            write_queue.task_done()
 
     with h5py.File(route, 'x') as f:
         ds = f.create_dataset(
@@ -168,33 +191,42 @@ def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, devic
             compression='lzf'
         )
 
+        writer = threading.Thread(target=writer_thread, args=(f, ds, n_sentences), daemon=True)
+        writer.start()
+
         model.eval()
         for i in tqdm(range(0, n_sentences, batch_size), desc=f'Processing {split}'):
-            batch_ids = input_ids_list[i : i + batch_size]
-            batch_idx = verb_idx_list[i : i + batch_size]
-            
+            batch_ids = sorted_input_ids[i : i + batch_size]
+            batch_idx = sorted_verb_idx[i : i + batch_size]
+
             batch_dicts = [{'input_ids': ids} for ids in batch_ids]
-            
             inputs = tokenizer.pad(
                 batch_dicts,
                 padding=True,
                 return_tensors='pt'
             ).to(device)
 
-            with torch.no_grad():
+            # Get hidden states
+            with torch.no_grad(), torch.amp.autocast(device_type=device.type if hasattr(device, 'type') else 'cuda'):
                 outputs = model(**inputs, output_hidden_states=True)
-            
+
             batch_range = torch.arange(len(batch_ids), device=device)
-            target_idx = torch.tensor(batch_idx, device=device)
+            target_idx  = torch.tensor(batch_idx, device=device)
 
-            # Extract [Mask] token
+            # Extract verb token from each layer and stack — cast to fp16 before stacking
             batch_features = torch.stack([
-                hs[batch_range, target_idx, :] for hs in outputs.hidden_states
-            ], dim=1).half().cpu().numpy()
+                hs[batch_range, target_idx, :].half() for hs in outputs.hidden_states
+            ], dim=1).cpu(memory_format=torch.contiguous_format)
 
-            ds[i : i + len(batch_ids)] = batch_features
+            write_queue.put((i, batch_features.numpy()))
+            del outputs, batch_features, inputs
 
-    print(f'SVA vectors avalaible at: {route}')
-    
+        writer.join()
+
+    print(f'SVA vectors available at: {route}')
+
+    # Read and restore original order
     with h5py.File(route, 'r') as f:
-        return f['verb_outputs'][:]
+        data = f['verb_outputs'][:]
+
+    return data[restore_order]
