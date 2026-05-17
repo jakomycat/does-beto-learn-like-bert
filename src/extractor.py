@@ -152,12 +152,7 @@ def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, devic
     base = Path(__file__).resolve()
     route = base.parent.parent / 'data' / 'features' / f'sva_features_{split}.h5'
     route.parent.mkdir(parents=True, exist_ok=True)
-
-    # If .h5 file already exists, load and return
-    if route.exists():
-        with h5py.File(route, 'r') as f:
-            return f['verb_outputs'][:]
-
+    
     n_layers = getattr(model.config, 'num_hidden_layers', 12) + 1
     hidden_size = model.config.hidden_size
     n_sentences = len(input_ids_list)
@@ -169,6 +164,10 @@ def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, devic
     for new_i, orig_i in enumerate(sorted_order):
         restore_order[orig_i] = new_i
 
+    # If .h5 file already exists, load and return
+    if route.exists():
+        return route
+
     sorted_input_ids = [input_ids_list[i] for i in sorted_order]
     sorted_verb_idx  = [verb_idx_list[i]  for i in sorted_order]
 
@@ -178,8 +177,14 @@ def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, devic
     def writer_thread(f, ds, n_total):
         written = 0
         while written < n_total:
-            start_i, data = write_queue.get()
-            ds[start_i : start_i + len(data)] = data
+            batch_orig_indices, data = write_queue.get()
+            
+            sort_mask = np.argsort(batch_orig_indices)
+            sorted_orig_indices = np.array(batch_orig_indices)[sort_mask]
+            sorted_data = data[sort_mask]
+            
+            ds[sorted_orig_indices] = sorted_data
+            
             written += len(data)
             write_queue.task_done()
 
@@ -187,8 +192,7 @@ def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, devic
         ds = f.create_dataset(
             'verb_outputs',
             shape=(n_sentences, n_layers, hidden_size),
-            dtype=np.float16,
-            compression='lzf'
+            dtype=np.float16
         )
 
         writer = threading.Thread(target=writer_thread, args=(f, ds, n_sentences), daemon=True)
@@ -218,15 +222,13 @@ def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, devic
                 hs[batch_range, target_idx, :].half() for hs in outputs.hidden_states
             ], dim=1).cpu(memory_format=torch.contiguous_format)
 
-            write_queue.put((i, batch_features.numpy()))
-            del outputs, batch_features, inputs
+            batch_orig_indices = sorted_order[i : i + batch_size]
+            write_queue.put((batch_orig_indices, batch_features.numpy()))
+            
+            del outputs, batch_features, inputs # Free up GPU memory
 
         writer.join()
 
     print(f'SVA vectors available at: {route}')
 
-    # Read and restore original order
-    with h5py.File(route, 'r') as f:
-        data = f['verb_outputs'][:]
-
-    return data[restore_order]
+    return route
