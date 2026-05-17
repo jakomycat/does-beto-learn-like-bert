@@ -27,22 +27,22 @@ def main():
     buckets = create_difficulty_buckets(data['test'])
     
     # Get verb features
-    X_train = extract_verb_features(data['train']['bert_input_ids'], data['train']['verb_token_index'], model, tokenizer, device, 'train')
+    X_train_path = extract_verb_features(data['train']['bert_input_ids'], data['train']['verb_token_index'], model, tokenizer, device, 'train')
     y_train = data['train']['label'].values
     
-    X_val = extract_verb_features(data['valid']['bert_input_ids'], data['valid']['verb_token_index'], model, tokenizer, device, 'val')
+    X_val_path = extract_verb_features(data['valid']['bert_input_ids'], data['valid']['verb_token_index'], model, tokenizer, device, 'val')
     y_val = data['valid']['label'].values
     
-    X_test = extract_verb_features(data['test']['bert_input_ids'], data['test']['verb_token_index'], model, tokenizer, device, 'test')
+    X_test_path = extract_verb_features(data['test']['bert_input_ids'], data['test']['verb_token_index'], model, tokenizer, device, 'test')
     y_test = data['test']['label'].values
     
-    #
+    # Run probing
     run_full_sva_evaluation(
-        X_train=X_train, 
+        X_train_path=X_train_path, 
         y_train=y_train, 
-        X_val=X_val, 
+        X_val_path=X_val_path, 
         y_val=y_val, 
-        X_test=X_test, 
+        X_test_path=X_test_path, 
         y_test=y_test, 
         buckets=buckets, 
         num_classes=2, # Singular vs Plural
