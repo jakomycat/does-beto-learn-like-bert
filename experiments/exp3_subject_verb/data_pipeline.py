@@ -125,14 +125,15 @@ def align_and_mask_datasets(datasets, tokenizer):
 # Function to group test df into num of attractors
 def create_difficulty_buckets(test_df):
     buckets = {}
+    pure_df = test_df[test_df['n_intervening'] == test_df['n_diff_intervening']].copy()
     
     for n in range(5):
         if n < 4:
             # Buckets for 0, 1, 2, 3
-            buckets[f'{n}'] = test_df[test_df['n_intervening'] == n].copy()
+            buckets[f'{n}'] = pure_df[pure_df['n_diff_intervening'] == n].copy()
         else:
             # Bucket for 4 or more
-            buckets['4+'] = test_df[test_df['n_intervening'] >= n].copy()
+            buckets['4+'] = pure_df[pure_df['n_diff_intervening'] >= n].copy()
     
     return buckets
 
