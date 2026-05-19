@@ -192,7 +192,7 @@ def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, devic
         ds = f.create_dataset(
             'verb_outputs',
             shape=(n_sentences, n_layers, hidden_size),
-            dtype=np.float16
+            dtype=np.float32
         )
 
         writer = threading.Thread(target=writer_thread, args=(f, ds, n_sentences), daemon=True)
@@ -217,9 +217,9 @@ def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, devic
             batch_range = torch.arange(len(batch_ids), device=device)
             target_idx  = torch.tensor(batch_idx, device=device)
 
-            # Extract verb token from each layer and stack — cast to fp16 before stacking
+            # Extract verb token from each layer and stack
             batch_features = torch.stack([
-                hs[batch_range, target_idx, :].half() for hs in outputs.hidden_states
+                hs[batch_range, target_idx, :] for hs in outputs.hidden_states
             ], dim=1).cpu(memory_format=torch.contiguous_format)
 
             batch_orig_indices = sorted_order[i : i + batch_size]
