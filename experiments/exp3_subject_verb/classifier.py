@@ -41,9 +41,9 @@ def run_full_sva_evaluation(X_train_path, y_train, X_val_path, y_val, X_test_pat
         print(f'Current layer: {layer_idx}')
         
         with h5py.File(X_train_path, 'r') as f_train, h5py.File(X_val_path, 'r') as f_val, h5py.File(X_test_path, 'r') as f_test:
-            X_train_l = f_train['verb_outputs'][:, layer_idx, :].astype(np.float32)
-            X_val_l = f_val['verb_outputs'][:, layer_idx, :].astype(np.float32)
-            X_test_l = f_test['verb_outputs'][:, layer_idx, :].astype(np.float32)
+            X_train_l = f_train['verb_outputs'][:, layer_idx, :]
+            X_val_l = f_val['verb_outputs'][:, layer_idx, :]
+            X_test_l = f_test['verb_outputs'][:, layer_idx, :]
         
         train_loader = create_dataloader(X_train_l, y_train, device, is_train=True)
         val_loader = create_dataloader(X_val_l, y_val, device, is_train=False)
