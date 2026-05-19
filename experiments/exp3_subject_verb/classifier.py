@@ -15,7 +15,8 @@ def evaluate_by_buckets(model, X_test_layer, y_test, buckets, device):
     
     for b_name, b_df in buckets.items():
         # Get bucket idx for the current difficulty
-        idx = b_df.index.tolist()
+        filtered_df = b_df[b_df['n_intervening'] == b_df['n_diff_intervening']]
+        idx = filtered_df.index.tolist()
         
         # Filter data 
         X_bucket = torch.tensor(X_test_layer[idx], dtype=torch.float32, device=device)
