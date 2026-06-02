@@ -18,3 +18,12 @@ def bag_of_words(words):
     roles = [0] * num_words
     
     return roles
+
+# Function to add bidirectional role
+def bidirectional(words):
+    left_right_role = left_to_right(words)
+    right_left_role = right_to_left(words)
+    
+    roles = list(zip(left_right_role, right_left_role))
+    
+    return roles
