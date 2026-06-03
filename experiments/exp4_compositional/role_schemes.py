@@ -61,3 +61,41 @@ def random_tree_roles(words, seed=123):
     _build_tree(0, num_words - 1, '')
     
     return roles
+
+# Function to add tree role
+def tree_roles(consituency_tree, words):
+    roles = []
+    
+    # Recursive function
+    def _walk(node, current_path):
+        # Base case
+        if node.is_leaf():
+            roles.append(current_path)
+            return
+
+        # Recursive case
+        children = node.children
+        k = len(children)
+        
+        if k == 1:
+            _walk(children[0], current_path)
+            
+        elif k >= 2:
+            for i, child in enumerate(children):
+                if i == (k - 1):
+                    next_path = current_path + ('R'*i)
+                else:
+                    next_path = current_path + ('R'*i) + 'L'
+                    
+                _walk(child, next_path)
+
+    if consituency_tree:
+        _walk(consituency_tree, '')
+        
+    # Wheel alignment check
+    if len(roles) != len(words):
+        raise ValueError(
+         f'The parser generated {len(roles)} tokens, but your words list has {len(words)} elements. Check the tokenization before continuing.'
+        )
+
+    return roles
