@@ -79,7 +79,7 @@ def get_span_representation(span_samples, model, tokenizer, device):
     return representations
 
 # Function to get [CLS] token
-def get_cls_token(sentences, model, tokenizer, device, task_name, split, batch_size=32):
+def get_cls_token(sentences, model, tokenizer, device, task_name, split, batch_size=32, is_split_into_words=False):
     base = Path(__file__).resolve()
     route = base.parent.parent / 'data' / 'cls_tokens' / f'cls_tokens_{task_name}_{split}.h5'
 
@@ -111,7 +111,12 @@ def get_cls_token(sentences, model, tokenizer, device, task_name, split, batch_s
 
         # Save sentences as metadata
         dt = h5py.string_dtype(encoding='utf-8')
-        f.create_dataset('sentences', data=np.array(sentences, dtype=dt))
+        if is_split_into_words:
+            meta_sentences = [' '.join(s) for s in sentences]
+        else:
+            meta_sentences = sentences
+
+        f.create_dataset('sentences', data=np.array(meta_sentences, dtype=dt))
 
         # Process sentences in batches
         for i in tqdm(range(0, n_sentences, batch_size), desc='Extracting CLS tokens'):
@@ -120,6 +125,7 @@ def get_cls_token(sentences, model, tokenizer, device, task_name, split, batch_s
             # Tokenize batch
             inputs = tokenizer(
                 batch_sentences,
+                is_split_into_words=is_split_into_words,
                 return_tensors='pt',
                 padding=True,
                 truncation=True,
