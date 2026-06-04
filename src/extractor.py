@@ -238,3 +238,68 @@ def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, devic
     print(f'SVA vectors available at: {route}')
 
     return route
+
+# Function to get fillers and keep the word count consistent
+def get_filler_embeddings(sentences, model, tokenizer, device, batch_size=32):
+    all_word_embeddings = []
+    
+    for i in tqdm(range(0, len(sentences), batch_size), desc='Extracting Filler Embeddings'):
+        batch_sentences = sentences[i : i + batch_size]
+        
+        inputs = tokenizer(
+            batch_sentences,
+            is_split_into_words=True,
+            return_tensors='pt',
+            padding=True,
+            truncation=True,
+            max_length=tokenizer.model_max_length
+            )
+    
+        inputs_device = {k: v.to(device) for k, v in inputs.items()}
+        
+        # Get hidden states
+        with torch.no_grad():
+            outputs = model(**inputs_device, output_hidden_states=True)
+            
+        # We extract zero layer (word embedding)
+        batch_layer_0 = outputs.hidden_states[0].cpu().numpy()
+        
+        for batch_idx in range(len(batch_sentences)):
+            word_ids = inputs.word_ids(batch_index=batch_idx)
+            
+            # Here we are grouping idx with the subtokens
+            word_to_tokens = {}
+            for token_idx, word_id in enumerate(word_ids):
+                if word_id is not None: # This ignore [CLS], [SEP] and [PAD]
+                    if word_id not in word_to_tokens:
+                        word_to_tokens[word_id] = []
+                    word_to_tokens[word_id].append(token_idx)
+                    
+            num_orig_words = len(batch_sentences[batch_idx])
+            sentence_fillers = []
+            
+            # We take the average
+            for word_id in range(num_orig_words):
+                if word_id in word_to_tokens:
+                    token_indices = word_to_tokens[word_id]
+                    
+                    # We extract vectors of those specific subtokens
+                    subtoken_vecs = batch_layer_0[batch_idx, token_indices, :]
+                    
+                    pooled_vector = np.mean(subtoken_vecs, axis=0)
+                    sentence_fillers.append(pooled_vector)
+                
+            # Detects missing words
+            if len(sentence_fillers) != num_orig_words:
+                original_sentence = ' '.join(batch_sentences[batch_idx])
+                raise ValueError(
+                    f'Filler-Role misalignment detected!\n'
+                    f'Index sentence {i + batch_idx}: {original_sentence}\n'
+                    f'Original words: {num_orig_words}\n'
+                    f'Extracted fillers: {len(sentence_fillers)}\n'
+                    f'Probable cause: The sentence exceeds the tokenizers max_length and was truncated.'
+                )
+            
+            all_word_embeddings.append(np.array(sentence_fillers))
+            
+    return all_word_embeddings
