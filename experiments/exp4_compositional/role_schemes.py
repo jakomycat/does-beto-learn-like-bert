@@ -99,3 +99,18 @@ def tree_roles(consituency_tree, words):
         )
 
     return roles
+
+# Function to map roles into indices
+def build_role_vocab(corpus_roles):
+    # corpus_roles can be list of lists or a plane list
+    if corpus_roles and isinstance(corpus_roles[0], list):
+        flat_roles = [role for sentence_roles in corpus_roles for role in sentence_roles]
+    else:
+        flat_roles = corpus_roles
+        
+    unique_roles = set(flat_roles)
+    sort_unique_roles = sorted(list(unique_roles)) # It's to reproducibility
+    
+    role_to_id = {role: idx for idx, role in enumerate(sort_unique_roles)}
+    
+    return role_to_id
