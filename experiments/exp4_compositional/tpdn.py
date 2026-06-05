@@ -2,8 +2,11 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from tqdm import tqdm
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence
+import numpy as np
+import pandas as pd
+from pathlib import Path
 
 class TPDN(nn.Module):
     def __init__(self, n_roles, role_dim, filler_dim, output_dim):
@@ -141,3 +144,115 @@ def evaluate_mse(tpdn, dataloader, device):
     global_mse = total_error_weighted / total_sentences
     
     return global_mse
+
+# Function to map raw text/tuple roles to vocabulary integer IDs
+def map_roles_to_ids(raw_roles_list, role_to_id):
+    mapped_corpus = []
+    for sentence_roles in raw_roles_list:
+        
+        mapped_sentence = [role_to_id.get(role, 0) for role in sentence_roles]
+        mapped_corpus.append(mapped_sentence)
+        
+    return mapped_corpus
+
+# Function to run the full evaluation across schemes, layers, and seeds
+def run_tpdn_evaluation(fillers_train, fillers_test, targets_train, targets_test, sentences_train, sentences_test,
+                        role_schemes_dict, build_vocab_fn, map_roles_fn,
+                        seeds=[42, 43, 44, 45, 46], role_dim=20, n_epochs=10, lr=1e-3, batch_size=32, device='cuda',
+                        output_filename='tpdn_table4_results'):
+    # Config
+    device = torch.device(device if torch.cuda.is_available() else 'cpu')
+    n_layers = targets_train.shape[1]
+    filler_dim = fillers_train[0].shape[1]
+    
+    results_flat = []
+    
+    # Loop over role schemes
+    for scheme_name, scheme_fn in role_schemes_dict.items():
+        print(f'Processing scheme: {scheme_name}')
+        
+        # Generate raw roles
+        raw_roles_train = [scheme_fn(sent) for sent in sentences_train]
+        raw_roles_test = [scheme_fn(sent) for sent in sentences_test]
+        
+        # Build vocabulary using train set
+        role_to_id = build_vocab_fn(raw_roles_train)
+        n_roles = len(role_to_id)
+        
+        # Map raw roles to numerical IDs
+        role_ids_train = map_roles_fn(raw_roles_train, role_to_id)
+        role_ids_test = map_roles_fn(raw_roles_test, role_to_id)
+        
+        # Loop over BERT layers
+        for layer_idx in range(n_layers):
+            # Slice targets for the specific layer
+            layer_targets_train = targets_train[:, layer_idx, :]
+            layer_targets_test = targets_test[:, layer_idx, :]
+            
+            # Create Datasets
+            train_dataset = TPDNDataset(fillers_train, role_ids_train, layer_targets_train)
+            test_dataset = TPDNDataset(fillers_test, role_ids_test, layer_targets_test)
+            
+            # Create DataLoaders
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                collate_fn=tpdn_collate_fn
+            )
+            test_loader = DataLoader(
+                test_dataset,
+                batch_size=batch_size,
+                shuffle=False,
+                collate_fn=tpdn_collate_fn
+            )
+            
+            layer_seed_mses = []
+            
+            # Loop over seeds
+            for seed in seeds:
+                # Set seed for reproducibility
+                torch.manual_seed(seed)
+                if torch.cuda.is_available():
+                    torch.cuda.manual_seed_all(seed)
+                    
+                # Instantiate model
+                model = TPDN(
+                    n_roles=n_roles,
+                    role_dim=role_dim,
+                    filler_dim=filler_dim,
+                    output_dim=filler_dim
+                )
+                
+                # Train model
+                model = train_tpdn(model, train_loader, device, n_epochs=n_epochs, lr=lr)
+                
+                # Evaluate MSE
+                seed_mse = evaluate_mse(model, test_loader, device)
+                layer_seed_mses.append(seed_mse)
+                
+            # Calculate mean and std over seeds
+            mean_mse = np.mean(layer_seed_mses)
+            std_mse = np.std(layer_seed_mses)
+            
+            results_flat.append({
+                'scheme': scheme_name,
+                'layer': layer_idx,
+                'mse_mean': mean_mse,
+                'mse_std': std_mse
+            })
+            
+    # Convert to DataFrame and pivot to get Table 4 layout
+    df_flat = pd.DataFrame(results_flat)
+    df_table4 = df_flat.pivot(index='layer', columns='scheme', values='mse_mean')
+    
+    # Save results to CSV
+    base_path = Path(__file__).resolve().parents[2]
+    output_dir = base_path / 'results' / 'csv'
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    csv_path = output_dir / f'{output_filename}.csv'
+    df_table4.to_csv(csv_path)
+    print(f'Results saved to {csv_path}')
+    
+    return df_table4
