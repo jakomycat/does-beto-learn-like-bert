@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from tqdm import tqdm
+from torch.utils.data import Dataset
 
 class TPDN(nn.Module):
     def __init__(self, n_roles, role_dim, filler_dim, output_dim):
@@ -22,6 +23,33 @@ class TPDN(nn.Module):
         output = self.projection(tpr_flat)
         
         return output
+    
+# Dataset for TPDN
+class TPDNDataset(Dataset):
+    def __init__(self, fillers_list, role_ids_list, targets):
+        assert len(fillers_list) == len(role_ids_list) == len(targets), f'Corpus mismatch: {len(fillers_list)} fillers, {len(role_ids_list)} roles, {len(targets)} targets.'
+        
+        self.fillers_list = fillers_list
+        self.role_ids_list = role_ids_list
+        self.targets = targets
+        
+    def __len__(self):
+        return len(self.fillers_list)
+    
+    def __getitem__(self, idx):
+        filler = self.fillers_list[idx]
+        role_id = self.role_ids_list[idx]
+        target = self.targets[idx]
+        
+        filler_tensor = torch.tensor(filler, dtype=torch.float32)
+        role_tensor = torch.tensor(role_id, dtype=torch.long)
+        target_tensor = torch.tensor(target, dtype=torch.float32)
+        
+        return {
+                'fillers': filler_tensor,
+                'role_ids': role_tensor,
+                'targets': target_tensor
+            }
 
 # Function to train TPDN
 def train_tpdn(tpdn, dataloader, device, n_epochs=10, lr=1e-3):
