@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.optim import Adam
 from tqdm import tqdm
 from torch.utils.data import Dataset
+from torch.nn.utils.rnn import pad_sequence
 
 class TPDN(nn.Module):
     def __init__(self, n_roles, role_dim, filler_dim, output_dim):
@@ -51,6 +52,34 @@ class TPDNDataset(Dataset):
                 'targets': target_tensor
             }
 
+# Custom function for TPDNDataset
+def tpdn_collate_fn(batch):
+    fillers_list = [item['fillers'] for item in batch]
+    role_ids_list = [item['role_ids'] for item in batch]
+    targets_list = [item['targets'] for item in batch]
+    
+    lengths = torch.tensor([len(r) for r in role_ids_list])
+    
+    # Fill the vectors
+    fillers_padded = pad_sequence(fillers_list, batch_first=True, padding_value=0.0)
+    role_ids_padded = pad_sequence(role_ids_list, batch_first=True, padding_value=0)
+    
+    batch_size = len(batch)
+    w_max = role_ids_padded.shape[1]
+    
+    # Here important words are marked with a 1, otherwise a 0
+    attention_mask = torch.arange(w_max).expand(batch_size, w_max) < lengths.unsqueeze(1)
+    attention_mask = attention_mask.float()
+    
+    targets_stacked = torch.stack(targets_list)
+    
+    return {
+        'fillers': fillers_padded,
+        'role_ids': role_ids_padded,
+        'attention_mask': attention_mask,
+        'targets': targets_stacked
+    }
+    
 # Function to train TPDN
 def train_tpdn(tpdn, dataloader, device, n_epochs=10, lr=1e-3):
     # Config
