@@ -112,3 +112,32 @@ def train_tpdn(tpdn, dataloader, device, n_epochs=10, lr=1e-3):
             batch_iterator.set_postfix({'loss' : f'{loss.item():.4f}'})
         
     return tpdn
+
+# Function to calculate MSE
+def evaluate_mse(tpdn, dataloader, device):
+    tpdn.eval()
+    
+    criterion = nn.MSELoss()
+    
+    total_error_weighted = 0.0
+    total_sentences = 0
+    
+    with torch.no_grad():
+        for batch in dataloader:
+            # Extract components
+            fillers = batch['fillers'].to(device, dtype=torch.float32)
+            role_ids = batch['role_ids'].to(device, dtype=torch.long)
+            attention_mask = batch['attention_mask'].to(device, dtype=torch.float32)
+            targets = batch['targets'].to(device, dtype=torch.float32)
+            
+            preds = tpdn(fillers, role_ids, attention_mask)
+            loss = criterion(preds, targets)
+            
+            current_batch_size = targets.size(0)
+            
+            total_error_weighted += loss.item() * current_batch_size
+            total_sentences += current_batch_size
+        
+    global_mse = total_error_weighted / total_sentences
+    
+    return global_mse
