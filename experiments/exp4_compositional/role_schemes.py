@@ -100,6 +100,25 @@ def tree_roles(consituency_tree, words):
 
     return roles
 
+# Function to pre-parse tree roles using Stanza in batch
+def preparse_tree_roles(sentences, nlp):
+    # Process entire batch
+    doc = nlp(sentences)
+    
+    if len(doc.sentences) != len(sentences):
+        raise ValueError(
+            f'Stanza mismatch. Expected {len(sentences)} sentences, but got {len(doc.sentences)}.'
+        )
+        
+    corpus_roles = []
+    for i, sent in enumerate(doc.sentences):
+        words = sentences[i]
+        tree = sent.constituency
+        roles = tree_roles(tree, words)
+        corpus_roles.append(roles)
+        
+    return corpus_roles
+
 # Function to map roles into indices
 def build_role_vocab(corpus_roles):
     # corpus_roles can be list of lists or a plane list
