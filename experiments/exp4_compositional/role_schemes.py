@@ -63,14 +63,16 @@ def random_tree_roles(words, seed=123):
     return roles
 
 # Function to add tree role
-def tree_roles(consituency_tree, words):
+def tree_roles(consituency_tree, words, max_depth=None):
     roles = []
     
     # Recursive function
     def _walk(node, current_path):
         # Base case
         if node.is_leaf():
-            roles.append(current_path)
+            # Truncate only at the leaf to collapse deep/rare structural roles
+            final_path = current_path[:max_depth] if max_depth is not None else current_path
+            roles.append(final_path)
             return
 
         # Recursive case
