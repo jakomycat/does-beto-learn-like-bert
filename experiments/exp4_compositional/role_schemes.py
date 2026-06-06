@@ -31,7 +31,7 @@ def bidirectional(words):
     return roles
 
 # Function to add random-tree role
-def random_tree_roles(words, seed=123):
+def random_tree_roles(words, seed=123, max_depth=None):
     num_words = len(words)
     
     # Recursion
@@ -48,7 +48,7 @@ def random_tree_roles(words, seed=123):
     def _build_tree(start, end, current_path):
         # Base case
         if start == end:
-            roles[start] = current_path
+            roles[start] = current_path[:max_depth] if max_depth is not None else current_path
             return
         
         # Recursive case
