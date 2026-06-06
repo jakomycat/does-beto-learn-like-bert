@@ -252,7 +252,13 @@ def run_tpdn_evaluation(fillers_train, fillers_test, targets_train, targets_test
     output_dir.mkdir(parents=True, exist_ok=True)
     
     csv_path = output_dir / f'{output_filename}.csv'
+    
+    # If csv exists, load and combine data
+    if csv_path.exists():
+        df_existing = pd.read_csv(csv_path, index_col='layer')
+        df_table4 = df_table4.combine_first(df_existing)
+    
     df_table4.to_csv(csv_path)
-    print(f'Results saved to {csv_path}')
+    print(f'Results saved/updated to {csv_path}')
     
     return df_table4
