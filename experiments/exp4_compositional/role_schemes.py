@@ -103,7 +103,7 @@ def tree_roles(consituency_tree, words, max_depth=None):
     return roles
 
 # Function to pre-parse tree roles using Stanza in batch
-def preparse_tree_roles(sentences, nlp):
+def preparse_tree_roles(sentences, nlp, max_depth=None):
     # Process entire batch
     doc = nlp(sentences)
     
@@ -116,7 +116,7 @@ def preparse_tree_roles(sentences, nlp):
     for i, sent in enumerate(doc.sentences):
         words = sentences[i]
         tree = sent.constituency
-        roles = tree_roles(tree, words)
+        roles = tree_roles(tree, words, max_depth=max_depth)
         corpus_roles.append(roles)
         
     return corpus_roles
