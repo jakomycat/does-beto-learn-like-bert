@@ -16,7 +16,7 @@ def load_model_and_tokenizer(lang, device):
         
     # To BETO
     elif lang == 'es':
-        raise ValueError('Its not implemented')
+        model_name = 'dccuchile/bert-base-spanish-wwm-uncased'
     
     model = AutoModel.from_pretrained(model_name, output_hidden_states=True)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
