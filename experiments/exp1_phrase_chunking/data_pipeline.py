@@ -8,9 +8,9 @@ def load_raw_dataset(lang='en'):
     if lang == 'en':
         dataset = load_dataset('conll2000')
     
-    # This is for BETO - Coming Soon
+    # This is for BETO
     elif lang == 'es':
-        raise ValueError('Its not implemented')
+        dataset = load_dataset('universal_dependencies', 'es_ancora')
         
     return dataset['train']
 
