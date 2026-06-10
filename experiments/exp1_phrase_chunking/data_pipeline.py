@@ -311,21 +311,38 @@ def balance_and_sample(labeled_chunks, negative_spans=None, n_chunks=3000, n_no_
 # Principal function
 def get_phrasal_data(lang='en', n_chunks=3000, n_no_chunks=500, use_original=True):
     # This is the overall process
+    # Load dataset
     print('1/4 - Loading dataset')
     sentences = load_raw_dataset(lang)
     
+    # Get valid chunks
     print('2/4 - Getting valid chunks')
-    labeled_chunks = parse_iob_to_chunks(sentences)
+    if lang == 'en':
+        labeled_chunks = parse_iob_to_chunks(sentences)
+    elif lang == 'es':
+        labeled_chunks = []
+        upos_names = sentences.features['upos'].feature.names # Extract UPOS tags
     
+        # Build chunks for each sentence
+        for tokens, upos, head, deprel in zip(sentences['tokens'], sentences['upos'], sentences['head'], sentences['deprel']):
+            labeled_chunks.extend(build_chunks_from_ud(tokens, upos, head, deprel, upos_names=upos_names))
+
+    # Skip negative span extraction
     if use_original:
         print('3/4 - Skipping negative span extraction (original paper mode)')
         negative_spans = None
+    # Case extract invalid chunks (noise)
     else:
         print('3/4 - Getting invalid chunks (noise)')
+        
+        # Security block for AnCora "es"
+        if lang == 'es':
+            raise NotImplementedError("Noise extraction is not yet adapted for AnCora. Run with use_original=True for now.")
+            
         negative_spans = extract_negative_spans(sentences, n_needed=n_no_chunks)
      
     print('4/4 - Balancing and mixing the final dataset')
-    final_data = balance_and_sample(labeled_chunks, negative_spans, n_chunks=n_chunks)
+    final_data = balance_and_sample(labeled_chunks, negative_spans, n_chunks=n_chunks, n_no_chunks=n_no_chunks)
     
     print(f'Pipeline completed, total samples: {len(final_data)}')
     
