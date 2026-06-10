@@ -58,7 +58,7 @@ def main():
     if lang == 'en':
         model_name = 'bert'
     elif lang == 'es':
-        model_name == 'beto'
+        model_name = 'beto'
         
     if original:
         original_name = 'original'
