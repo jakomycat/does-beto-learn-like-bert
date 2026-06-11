@@ -317,15 +317,12 @@ def get_phrasal_data(lang='en', n_chunks=3000, n_no_chunks=500, use_original=Tru
     
     # Get valid chunks
     print('2/4 - Getting valid chunks')
-    if lang == 'en':
-        labeled_chunks = parse_iob_to_chunks(sentences)
-    elif lang == 'es':
-        labeled_chunks = []
-        upos_names = sentences.features['upos'].feature.names # Extract UPOS tags
-    
-        # Build chunks for each sentence
-        for tokens, upos, head, deprel in zip(sentences['tokens'], sentences['upos'], sentences['head'], sentences['deprel']):
-            labeled_chunks.extend(build_chunks_from_ud(tokens, upos, head, deprel, upos_names=upos_names))
+    labeled_chunks = []
+    upos_names = sentences.features['upos'].feature.names # Extract UPOS tags
+
+    # Build chunks for each sentence
+    for tokens, upos, head, deprel in zip(sentences['tokens'], sentences['upos'], sentences['head'], sentences['deprel']):
+        labeled_chunks.extend(build_chunks_from_ud(tokens, upos, head, deprel, upos_names=upos_names))
 
     # Skip negative span extraction
     if use_original:
@@ -335,9 +332,9 @@ def get_phrasal_data(lang='en', n_chunks=3000, n_no_chunks=500, use_original=Tru
     else:
         print('3/4 - Getting invalid chunks (noise)')
         
-        # Security block for AnCora "es"
-        if lang == 'es':
-            raise NotImplementedError("Noise extraction is not yet adapted for AnCora. Run with use_original=True for now.")
+        # Security block for AnCora y EWT
+        if lang == 'es' or lang == 'en':
+            raise NotImplementedError("Noise extraction is not yet adapted for AnCora/EWT. Run with use_original=True for now.")
             
         negative_spans = extract_negative_spans(sentences, n_needed=n_no_chunks)
      
