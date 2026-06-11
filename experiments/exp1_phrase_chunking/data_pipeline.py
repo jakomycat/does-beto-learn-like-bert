@@ -6,7 +6,7 @@ import random
 def load_raw_dataset(lang='en'):
     # This is for BERT
     if lang == 'en':
-        dataset = load_dataset('conll2000')
+        dataset = load_dataset('universal_dependencies', 'en_ewt')
     
     # This is for BETO
     elif lang == 'es':
