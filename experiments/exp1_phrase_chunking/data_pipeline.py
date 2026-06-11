@@ -14,57 +14,6 @@ def load_raw_dataset(lang='en'):
         
     return dataset['train']
 
-# IOB to chunks
-def parse_iob_to_chunks(sentences):
-    chunks = []
-    
-    labels = ['ADJP', 'ADVP', 'CONJP', 'INTJ', 'LST', 'NP', 'PP', 'PRT', 'QP', 'SBAR', 'VP']
-    
-    # Iterate in sentences
-    for tokens, chunk_tags in zip(sentences['tokens'], sentences['chunk_tags']):
-        sentence = ' '.join(tokens)  # Get full sentence
-        chunk = {'text': '', 'label': '', 'sentence': sentence, 'start': 0, 'end': 0} # Reset chunk
-        
-        for i, (token, tag) in enumerate(zip(tokens, chunk_tags)):
-            
-            # Case B-XX
-            if tag % 2 == 1:
-                if chunk['text'] != '': chunks.append(chunk) # Add found chunk
-                
-                label = labels[int(tag // 2)] # Get label
-                chunk = {
-                    'text': token,
-                    'label': label,
-                    'sentence': sentence,
-                    'start': i,
-                    'end': i
-                    } # Initialize chunk
-                
-            # Case I-XX
-            elif tag % 2 == 0 and tag != 0:
-                chunk['text'] += ' ' + token
-                chunk['end'] = i # Update end index
-                
-            # Case O
-            elif tag == 0:
-                if chunk['text'] != '':
-                    chunks.append(chunk) # Add found chunk
-                    
-                    chunks.append({
-                        'text': token,
-                        'label': 'O',
-                        'sentence': sentence,
-                        'start': i,
-                        'end': i
-                    }) # Add no-chunk / label 'O'
-                    
-                    chunk = {'text': '', 'label': '', 'sentence': sentence, 'start': 0, 'end': 0} # Clear chunk
-                    
-        # Maybe a open chunk
-        if chunk['text'] != '': chunks.append(chunk)
-        
-    return chunks            
-
 # Function to build chunks from Universal Dependencies
 def build_chunks_from_ud(tokens, upos, head, deprel, upos_names=None):
     """
