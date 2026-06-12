@@ -158,71 +158,57 @@ def build_chunks_from_ud(tokens, upos, head, deprel, upos_names=None):
             
     return chunks_output
 
-# Auxiliar function for "extract_negative_spans"
-def is_invalid_chunk(span_tags):
-    # Case O is in tags
-    if 0 in span_tags:
-        return True
-    
-    first_B = None
-    for span in span_tags:
-        # Get first B-XX
-        if first_B == None and span % 2 == 1:
-            first_B = span
-            
-        # Case two B-XX
-        if first_B != span and span % 2 == 1:
-            return True
-        
-    # Doesn't exist B-XX
-    if first_B == None:
-        return True
-    
-    # Case when this begin with I-XX
-    if first_B != span_tags[0]:
-        return True
-    
-    # In other case this is valid chunk
-    return False
-    
-# Function to extract no-chunks
-def extract_negative_spans(sentences, n_needed=500, max_len=4, seed=7):
+# New fuunction to extract negative spans
+def extract_negative_spans(sentences_tokens, gold_chunks_map, n_needed=500, max_len=4, seed=7):
     negative_spans = []
-    num_sentences = len(sentences['tokens'])
+    seen_spans = set()
+    num_sentences = len(sentences_tokens)
     
     rng = random.Random(seed)
     
+    # It controls possible infinite loop
+    max_attempts = n_needed * 20
+    attempts = 0
+    
     while len(negative_spans) < n_needed:
-        chunk_text = ''
+        if attempts >= max_attempts:
+            raise RuntimeError(
+                f'Attempt limit reached: I only found {len(negative_spans)} out of {n_needed} negative examples.'
+                'Check the parameters (max_len).'
+            )
+        attempts += 1
         
-        # Get a random token
+        # Get a random sentence
         s_idx = rng.randint(0, num_sentences - 1)
-        tokens = sentences['tokens'][s_idx]
-        tags = sentences['chunk_tags'][s_idx]
+        tokens = sentences_tokens[s_idx]
         
-        # Avoid one-word sentences
         if len(tokens) < 2:
             continue
         
-        # Get a random split
+        # We generate a span
         start_idx = rng.randint(0, len(tokens) - 2)
-        
-        max_end = min(start_idx + max_len, len(tokens) - 1) # This is to prevent exceeding the limit
+        max_end = min(start_idx + max_len - 1, len(tokens) - 1)
         end_idx = rng.randint(start_idx + 1, max_end)
         
-        chunk_text += " ".join(tokens[start_idx + 1:end_idx + 1]) # Get full text
+        # It avoids exactly spans
+        span_signature = (s_idx, start_idx, end_idx)
+        if span_signature in seen_spans:
+            continue
         
-        tags_to_validate = tags[start_idx:end_idx + 1]
-        if is_invalid_chunk(tags_to_validate):
-            negative_spans.append({
-                'text': ' '.join(tokens[start_idx:end_idx + 1]),
-                'label': 'None',
-                'sentence': ' '.join(tokens),
-                'start': start_idx,
-                'end': end_idx
-            })
+        # If it's a valid chunk, continue
+        if (start_idx, end_idx) in gold_chunks_map.get(s_idx, set()):
+            continue
         
-    return negative_spans
+        seen_spans.add(span_signature)
+        span_tokens = tokens[start_idx:end_idx + 1]
+        
+        negative_spans.append({
+            'text': ' '.join(span_tokens),
+            'label': 'O',
+            'sentence': ' '.join(tokens),
+            'start': start_idx,
+            'end': end_idx
+        })
     
 # Function to mix the chunks with the non-chunks
 def balance_and_sample(labeled_chunks, negative_spans=None, n_chunks=3000, n_no_chunks=500, seed=7):
