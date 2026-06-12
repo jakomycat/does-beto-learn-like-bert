@@ -5,7 +5,7 @@ from experiments.exp1_phrase_chunking.data_pipeline import get_phrasal_data
 from experiments.exp1_phrase_chunking.visualization import plot_tsne_layers
 from experiments.exp1_phrase_chunking.evaluation import evaluate_kmeans_nmi
 
-from src.extractor import load_model_and_tokenizer, get_span_representation
+from src.extractor import load_model_and_tokenizer, get_span_representation, set_seed
 
 def main():
     parser = argparse.ArgumentParser()
@@ -41,9 +41,18 @@ def main():
         default=[1, 2, 11, 12]
     )
     
+    parser.add_argument(
+        '--seed',
+        type=int,
+        default=7
+    )
+    
     args = parser.parse_args()
     
-    lang, original, n_chunks, n_no_chunks, layers = args.lang, args.original, args.n_chunks, args.n_no_chunks, args.layers
+    lang, original, n_chunks, n_no_chunks, layers, seed = args.lang, args.original, args.n_chunks, args.n_no_chunks, args.layers, args.seed
+    
+    # Fix all randomness before anything else
+    set_seed(seed)
     
     # Load modelo and tokenizer
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
