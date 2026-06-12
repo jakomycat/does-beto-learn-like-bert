@@ -22,6 +22,7 @@ def load_model_and_tokenizer(lang, device):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
     model.to(device)
+    model.eval()
     
     return model, tokenizer
 
