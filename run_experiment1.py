@@ -18,7 +18,7 @@ def main():
     
     parser.add_argument( # Use original implementation from principal paper
         '--original',
-        type=argparse.BooleanOptionalAction,
+        action=argparse.BooleanOptionalAction,
         default=True
     )
     
