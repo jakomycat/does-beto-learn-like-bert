@@ -209,6 +209,8 @@ def extract_negative_spans(sentences_tokens, gold_chunks_map, n_needed=500, max_
             'start': start_idx,
             'end': end_idx
         })
+        
+    return negative_spans
     
 # Function to mix the chunks with the non-chunks
 def balance_and_sample(labeled_chunks, negative_spans=None, n_chunks=3000, n_no_chunks=500, seed=7):
@@ -251,13 +253,23 @@ def get_phrasal_data(lang='en', n_chunks=3000, n_no_chunks=500, use_original=Tru
     sentences = load_raw_dataset(lang)
     
     # Get valid chunks
-    print('2/4 - Getting valid chunks')
+    print('2/4 - Getting valid chunks and building gold map')
     labeled_chunks = []
+    gold_chunks_map = {}
     upos_names = sentences.features['upos'].feature.names # Extract UPOS tags
-
-    # Build chunks for each sentence
-    for tokens, upos, head, deprel in zip(sentences['tokens'], sentences['upos'], sentences['head'], sentences['deprel']):
-        labeled_chunks.extend(build_chunks_from_ud(tokens, upos, head, deprel, upos_names=upos_names))
+    
+    for s_idx, (tokens, upos, head, deprel) in enumerate(zip(sentences['tokens'], sentences['upos'], sentences['head'], sentences['deprel'])):
+        # Extract chunks
+        sentence_chunks = build_chunks_from_ud(tokens, upos, head, deprel, upos_names=upos_names)
+        labeled_chunks.extend(sentence_chunks)
+        
+        valid_spans = set()
+        for chunk in sentence_chunks:
+            if chunk['label'] != 'O':
+                valid_spans.add((chunk['start'], chunk['end']))
+                
+        gold_chunks_map[s_idx] = valid_spans
+        
 
     # Skip negative span extraction
     if use_original:
@@ -267,11 +279,12 @@ def get_phrasal_data(lang='en', n_chunks=3000, n_no_chunks=500, use_original=Tru
     else:
         print('3/4 - Getting invalid chunks (noise)')
         
-        # Security block for AnCora y EWT
-        if lang == 'es' or lang == 'en':
-            raise NotImplementedError("Noise extraction is not yet adapted for AnCora/EWT. Run with use_original=True for now.")
-            
-        negative_spans = extract_negative_spans(sentences, n_needed=n_no_chunks, seed=seed)
+        negative_spans = extract_negative_spans(
+            sentences_tokens=sentences['tokens'],
+            gold_chunks_map=gold_chunks_map,
+            n_needed=n_no_chunks,
+            seed=seed
+        )
      
     print('4/4 - Balancing and mixing the final dataset')
     final_data = balance_and_sample(labeled_chunks, negative_spans, n_chunks=n_chunks, n_no_chunks=n_no_chunks, seed=seed)
