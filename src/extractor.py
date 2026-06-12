@@ -7,6 +7,14 @@ import numpy as np
 from pathlib import Path
 import threading
 import queue
+import random
+
+# Function to fix all sources of randomness for reproducibility
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
 # Function to get pre-trained model
 def load_model_and_tokenizer(lang, device):
