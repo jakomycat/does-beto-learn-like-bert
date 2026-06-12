@@ -190,13 +190,13 @@ def extract_negative_spans(sentences, n_needed=500, max_len=4, seed=7):
     negative_spans = []
     num_sentences = len(sentences['tokens'])
     
-    random.seed(seed) 
+    rng = random.Random(seed)
     
     while len(negative_spans) < n_needed:
         chunk_text = ''
         
         # Get a random token
-        s_idx = random.randint(0, num_sentences - 1)
+        s_idx = rng.randint(0, num_sentences - 1)
         tokens = sentences['tokens'][s_idx]
         tags = sentences['chunk_tags'][s_idx]
         
@@ -205,10 +205,10 @@ def extract_negative_spans(sentences, n_needed=500, max_len=4, seed=7):
             continue
         
         # Get a random split
-        start_idx = random.randint(0, len(tokens) - 2)
+        start_idx = rng.randint(0, len(tokens) - 2)
         
         max_end = min(start_idx + max_len, len(tokens) - 1) # This is to prevent exceeding the limit
-        end_idx = random.randint(start_idx + 1, max_end)
+        end_idx = rng.randint(start_idx + 1, max_end)
         
         chunk_text += " ".join(tokens[start_idx + 1:end_idx + 1]) # Get full text
         
@@ -229,7 +229,7 @@ def balance_and_sample(labeled_chunks, negative_spans=None, n_chunks=3000, n_no_
     """
     If negative_spans is None this indicates that it will use original paper's implementation
     """
-    random.seed(seed)
+    rng = random.Random(seed)
     
     # Original implementation
     if negative_spans is None:
@@ -238,8 +238,8 @@ def balance_and_sample(labeled_chunks, negative_spans=None, n_chunks=3000, n_no_
         o_chunks = [chunk for chunk in labeled_chunks if chunk['label'] == 'O']
         
         # Sample from each group
-        sample_non_o = random.sample(non_o_chunks, n_chunks)
-        sample_o = random.sample(o_chunks, n_no_chunks)
+        sample_non_o = rng.sample(non_o_chunks, n_chunks)
+        sample_o = rng.sample(o_chunks, n_no_chunks)
         
         # Combine and shuffle
         final_list = sample_non_o + sample_o
@@ -250,7 +250,7 @@ def balance_and_sample(labeled_chunks, negative_spans=None, n_chunks=3000, n_no_
         non_o_chunks = [chunk for chunk in labeled_chunks if chunk['label'] != 'O']
         
         # Get a random sample of chunks
-        sample_chunks = random.sample(non_o_chunks, n_chunks)
+        sample_chunks = rng.sample(non_o_chunks, n_chunks)
         
         # Combine the lists
         final_list = sample_chunks + negative_spans
@@ -258,7 +258,7 @@ def balance_and_sample(labeled_chunks, negative_spans=None, n_chunks=3000, n_no_
     return final_list
     
 # Principal function
-def get_phrasal_data(lang='en', n_chunks=3000, n_no_chunks=500, use_original=True):
+def get_phrasal_data(lang='en', n_chunks=3000, n_no_chunks=500, use_original=True, seed=7):
     # This is the overall process
     # Load dataset
     print('1/4 - Loading dataset')
@@ -285,10 +285,10 @@ def get_phrasal_data(lang='en', n_chunks=3000, n_no_chunks=500, use_original=Tru
         if lang == 'es' or lang == 'en':
             raise NotImplementedError("Noise extraction is not yet adapted for AnCora/EWT. Run with use_original=True for now.")
             
-        negative_spans = extract_negative_spans(sentences, n_needed=n_no_chunks)
+        negative_spans = extract_negative_spans(sentences, n_needed=n_no_chunks, seed=seed)
      
     print('4/4 - Balancing and mixing the final dataset')
-    final_data = balance_and_sample(labeled_chunks, negative_spans, n_chunks=n_chunks, n_no_chunks=n_no_chunks)
+    final_data = balance_and_sample(labeled_chunks, negative_spans, n_chunks=n_chunks, n_no_chunks=n_no_chunks, seed=seed)
     
     print(f'Pipeline completed, total samples: {len(final_data)}')
     

@@ -59,7 +59,7 @@ def main():
     model, tokenizer = load_model_and_tokenizer(lang=lang, device=device)
     
     # Get CoNLL-2000 data processed
-    data = get_phrasal_data(lang=lang, n_chunks=n_chunks, n_no_chunks=n_no_chunks, use_original=original)
+    data = get_phrasal_data(lang=lang, n_chunks=n_chunks, n_no_chunks=n_no_chunks, use_original=original, seed=seed)
     
     # Get span representation
     representations = get_span_representation(span_samples=data, model=model, tokenizer=tokenizer, device=device)
@@ -78,7 +78,7 @@ def main():
     plot_tsne_layers(span_representations=representations, layers=layers, output_filename=f'tsne_{model_name}_{original_name}')
 
     # Evaluation with NMI
-    evaluate_kmeans_nmi(span_representations=representations, output_filename=f'nmi_score_{model_name}_{original_name}')
+    evaluate_kmeans_nmi(span_representations=representations, output_filename=f'nmi_score_{model_name}_{original_name}', seed=seed)
     
     print('Experiment successfully completed')
     
