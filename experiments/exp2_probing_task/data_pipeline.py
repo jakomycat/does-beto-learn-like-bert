@@ -60,18 +60,17 @@ def read_xprobe_file(task_name, lang):
                 parts = line.rstrip('\n').split('\t')
                 
             if len(parts) == 2:
-                label, text = parts
-            else:
-                continue
+                text, label = parts
             
-            dataset['data'].append(text)
-            dataset['labels'].append(label)
+                dataset['data'].append(text)
+                dataset['labels'].append(label)
             
     return splits_data['tr'], splits_data['te'], splits_data['va']
 
 # Function to
 def encode_labels(train_labels, test_labels, validation_labels):
-    unique_labels = sorted(list(set(train_labels))) # Get every unique label
+    all_labels = train_labels + test_labels + validation_labels
+    unique_labels = sorted(list(set(all_labels)))
     
     label_to_id = {label:i for i, label in enumerate(unique_labels)}
     id_to_label = {i:label for i, label in enumerate(unique_labels)}
