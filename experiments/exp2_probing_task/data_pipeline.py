@@ -59,11 +59,11 @@ def read_xprobe_file(task_name, lang):
             for line in f:
                 parts = line.rstrip('\n').split('\t')
                 
-            if len(parts) == 2:
-                text, label = parts
-            
-                dataset['data'].append(text)
-                dataset['labels'].append(label)
+                if len(parts) == 2:
+                    text, label = parts
+                
+                    dataset['data'].append(text)
+                    dataset['labels'].append(label)
             
     return splits_data['tr'], splits_data['te'], splits_data['va']
 
