@@ -10,6 +10,8 @@ from tqdm import tqdm
 import pandas as pd
 import copy
 
+from src.extractor import set_seed
+
 # Single-layer perceptron
 class ProbeClassifier(nn.Module):
     def __init__(self, input_dim, num_classes):
@@ -21,22 +23,26 @@ class ProbeClassifier(nn.Module):
         return output
     
 # Prepare data
-def create_dataloader(X, y, device, batch_size=256, is_train=False):
+def create_dataloader(X, y, device, batch_size=256, is_train=False, seed=42):
     X_tensor = torch.tensor(X, dtype=torch.float32, device=device)
     y_tensor = torch.tensor(y, dtype=torch.long, device=device)
     
     dataset = TensorDataset(X_tensor, y_tensor)
     
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+    
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=is_train
+        shuffle=is_train,
+        generator=generator
     )
     
     return dataloader
 
 # Loop of train
-def train_probe(model, train_loader, val_loader, max_epochs=100, patience=5):
+def train_probe(model, train_loader, val_loader, max_epochs=100, patience=5, layer_idx=0):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     
@@ -45,7 +51,7 @@ def train_probe(model, train_loader, val_loader, max_epochs=100, patience=5):
     best_model_weights = copy.deepcopy(model.state_dict())
     epochs_without_improvement = 0
     
-    epoch_iterator = tqdm(range(max_epochs), desc='Training Probe')
+    epoch_iterator = tqdm(range(max_epochs), desc=f'Training Probe (Layer {layer_idx})', leave=False)
     
     for epoch in epoch_iterator:
         model.train()
@@ -93,7 +99,6 @@ def train_probe(model, train_loader, val_loader, max_epochs=100, patience=5):
         })
     
         if epochs_without_improvement >= patience:
-            epoch_iterator.write(f"\nEarly stopping triggered at epoch {epoch+1}")
             epoch_iterator.close()
             break
         
@@ -102,8 +107,10 @@ def train_probe(model, train_loader, val_loader, max_epochs=100, patience=5):
     
     return model
 
-#
-def evaluate_layer(X_train, y_train, X_val, y_val, X_test, y_test, input_dim, num_classes, device):
+# Evaluate single layer
+def evaluate_layer(X_train, y_train, X_val, y_val, X_test, y_test, input_dim, num_classes, device, layer_idx):
+    set_seed(42 + layer_idx)
+    
     train_loader = create_dataloader(X_train, y_train, device, batch_size=256, is_train=True)
     val_loader = create_dataloader(X_val, y_val, device, batch_size=256, is_train=False)
     test_loader = create_dataloader(X_test, y_test, device, batch_size=256, is_train=False)
@@ -116,7 +123,8 @@ def evaluate_layer(X_train, y_train, X_val, y_val, X_test, y_test, input_dim, nu
         train_loader=train_loader,
         val_loader=val_loader,
         max_epochs=100,
-        patience=5
+        patience=5,
+        layer_idx=layer_idx
     )
     
     # Evaluation mode
@@ -158,7 +166,8 @@ def evaluate_all_layers(X_train, y_train, X_val, y_val, X_test, y_test, num_clas
             y_test,
             input_dim,
             num_classes,
-            device
+            device,
+            layer_idx=layer_idx
         )
         
         accuracies.append(accuracy)
