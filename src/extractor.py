@@ -35,55 +35,56 @@ def load_model_and_tokenizer(lang, device):
     return model, tokenizer
 
 # Function to get span representation (obviously)
-def get_span_representation(span_samples, model, tokenizer, device):
+def get_span_representation(span_samples, model, tokenizer, device, batch_size=32):
     representations = []
     
-    for sample in span_samples:
-        label = sample['label']
-        sentence = sample['sentence']
-        idx_start = sample['start']
-        idx_end = sample['end']
+    for i in range(0, len(span_samples), batch_size):
+        batch_samples = span_samples[i : i + batch_size]
+        
+        sentences = [sample['sentence'].split() for sample in  batch_samples]
         
         # Tokenize
         inputs = tokenizer(
-            sentence.split(),
+            sentences,
+            padding=True,
             return_tensors='pt',
             is_split_into_words=True
         )
-        
-        # Map word indices to BERT token indices
-        word_ids = inputs.word_ids()
-        bert_start = word_ids.index(idx_start)
-        bert_end = len(word_ids) - 1 - word_ids[::-1].index(idx_end)
-        
         inputs = {k: v.to(device) for k, v in inputs.items()}
         
-        # Get hidden states
         with torch.no_grad():
             outputs = model(**inputs)
-            
-        layer_representations = []
         
-        # Get hidden states for each layer - without the embeddings
-        for hidden_states in outputs.hidden_states:
-            hidden_states = hidden_states.squeeze(0)
+        for b_idx, sample in enumerate(batch_samples):
+            label = sample['label']
+            idx_start = sample['start']
+            idx_end = sample['end']
             
-            # Get first and last hidden state
-            h_first = hidden_states[bert_start]
-            h_final = hidden_states[bert_end]
+            # Map word indices to BERT token indices
+            word_ids = inputs.word_ids(batch_index=b_idx)
+            bert_start = word_ids.index(idx_start)
+            bert_end = len(word_ids) - 1 - word_ids[::-1].index(idx_end)
+                
+            layer_representations = []
             
-            # Get element-wise product and difference
-            product = h_first * h_final
-            difference = h_first - h_final
+            # Get hidden states for each layer - without the embeddings
+            for hidden_states in outputs.hidden_states:
+                # Get first and last hidden state
+                h_first = hidden_states[b_idx, bert_start]
+                h_final = hidden_states[b_idx, bert_end]
+                
+                # Get element-wise product and difference
+                product = h_first * h_final
+                difference = h_first - h_final
+                
+                # Concatenate
+                span_representation = torch.cat([h_first, h_final, product, difference], dim=0)
+                layer_representations.append(span_representation.cpu().numpy())
             
-            # Concatenate
-            span_representation = torch.cat([h_first, h_final, product, difference], dim=0)
-            layer_representations.append(span_representation.cpu().numpy())
-        
-        representations.append({
-            'representation': layer_representations,
-            'label': label
-        })
+            representations.append({
+                'representation': layer_representations,
+                'label': label
+            })
         
     return representations
 
