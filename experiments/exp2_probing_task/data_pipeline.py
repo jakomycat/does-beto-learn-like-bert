@@ -1,39 +1,42 @@
 import requests
 from pathlib import Path
 
-# Function to download data from original GitHub
-def download_seteval_data(task_name):
-    # See if data/SentEval exist
+# Function to download X-PROBE
+def download_xprobe_data(task_name, lang):
+    splits = ['tr', 'va', 'te']
+    
+    # See if data/xprobe exist
     base = Path(__file__).resolve()
-    senteval_route = base.parent.parent.parent / 'data' / 'SentEval'
+    xprobe_route = base.parent.parent.parent / 'data' / 'xprobe' / lang / task_name
     
-    senteval_route.mkdir(parents=True, exist_ok=True) # Create directories if they don't exist
+    xprobe_route.mkdir(parents=True, exist_ok=True) # Create directories if they don't exist
     
-    # See if task data exist
-    senteval_route_task = senteval_route / f'{task_name}.txt'
-    
-    if senteval_route_task.exists():
-        print(f'The file {task_name}.txt already exists.')
-        return
-    
-    url = f'https://raw.githubusercontent.com/facebookresearch/SentEval/main/data/probing/{task_name}.txt'
-    
-    try:
-        with requests.get(url, stream=True) as response:
-            response.raise_for_status()
+    for split in splits:
+        xprobe_route_task = xprobe_route / f'{split}.txt'
+        
+        if xprobe_route_task.exists():
+            print(f'The file {split}.txt for task {task_name} ({lang}) already exists.')
+            continue
+        
+        url = f'https://raw.githubusercontent.com/ltgoslo/xprobe/master/{lang}/{task_name}/{split}.txt'
+        
+        try:
+            with requests.get(url, stream=True) as response:
+                response.raise_for_status()
+                
+                with open(xprobe_route_task, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                            
+            print(f'The file {split}.txt for {task_name} ({lang}) was downloaded successfully.')  
             
-            with open(senteval_route_task, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192): # Chunks of 8KB
-                    if chunk: f.write(chunk) # Get all data
-                    
-        print(f'The file {task_name}.txt was downloaded successful.')
-    
-    # Exception handling
-    except requests.exceptions.HTTPError as e:
-        print(f'Task \'{task_name}\' does not exist in SentEval.')
+        # Exception handling
+        except requests.exceptions.HTTPError:
+            print(f'Split \'{split}\' for task \'{task_name}\' in \'{lang}\' does not exist in X-PROBE.')
 
-    except requests.exceptions.RequestException as e:
-        print(f'Network error while downloading \'{task_name}\': {e}')
+        except requests.exceptions.RequestException as e:
+            print(f'Network error while downloading \'{split}\' for \'{task_name}\': {e}')
         
 # Function to read SentEval's file and get train, test, validation
 def read_senteval_file(task_name):
