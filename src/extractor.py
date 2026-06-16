@@ -69,8 +69,8 @@ def get_span_representation(span_samples, model, tokenizer, device):
             hidden_states = hidden_states.squeeze(0)
             
             # Get first and last hidden state
-            h_first = hidden_states[bert_start] # Exclude [CLS]
-            h_final = hidden_states[bert_end] # Exclude [SEP]
+            h_first = hidden_states[bert_start]
+            h_final = hidden_states[bert_end]
             
             # Get element-wise product and difference
             product = h_first * h_final

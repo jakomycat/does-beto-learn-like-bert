@@ -5,15 +5,15 @@ from pathlib import Path
 from sklearn.manifold import TSNE
 
 LABEL_COLORS = {
-    'NOUN':     '#fed481',  # Amarillo claro
-    'PROPN':    '#f98e52',  # Naranja
-    'PRON':     '#e65c2e',  # Terracota
-    'NUM':      '#b8d0c3',  # Verde menta / Grisáceo (¡Nuevo!)
-    'VERB':     '#dd4a4c',  # Rojo
-    'AUX':      '#9e0142',  # Vino tinto
-    'ADJ':      '#86cfa5',  # Verde
-    'ADV':      '#3d95b8',  # Azul
-    'O':        '#5e4fa2',  # Azul oscuro / Morado
+    'NOUN':     '#fed481',
+    'PROPN':    '#f98e52',
+    'PRON':     '#e65c2e',
+    'NUM':      '#b8d0c3',
+    'VERB':     '#dd4a4c',
+    'AUX':      '#9e0142',
+    'ADJ':      '#86cfa5',
+    'ADV':      '#3d95b8',
+    'O':        '#5e4fa2',
 }
 
 def plot_tsne_layers(span_representations, layers, output_filename=None):
