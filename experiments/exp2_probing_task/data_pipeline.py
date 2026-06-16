@@ -83,12 +83,12 @@ def encode_labels(train_labels, test_labels, validation_labels):
     return (train_encoded, test_encoded, val_encoded), (label_to_id, id_to_label)
 
 # Function to run pipeline
-def load_probing_task(task_name):
+def load_probing_task(task_name, lang):
     # Verify if data exist
-    download_seteval_data(task_name)
+    download_xprobe_data(task_name, lang)
     
     # Read data
-    train, test, validation = read_senteval_file(task_name)
+    train, test, validation = read_xprobe_file(task_name, lang)
     
     # Get data encoded
     (train_enc, test_enc, val_enc), dicts = encode_labels(train['labels'], test['labels'], validation['labels'])
