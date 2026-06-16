@@ -8,7 +8,7 @@ from experiments.exp2_probing_task.classifier import evaluate_all_layers
 
 def get_data_for_task(task_name, model, tokenizer, device, lang):
     # Get data
-    data = load_probing_task(task_name)
+    data = load_probing_task(task_name, lang)
     
     # Get all cls tokens
     X_train = get_cls_token(data['train']['sentences'], model, tokenizer, device, task_name, 'train')
@@ -65,7 +65,7 @@ def main():
     model, tokenizer = load_model_and_tokenizer(lang=lang, device=device)
     
     if full_run:
-        tasks = ['sentence_length', 'word_content', 'tree_depth', 'top_constituents', 'bigram_shift',
+        tasks = ['sentence_length', 'word_content', 'tree_depth', 'bigram_shift',
                  'past_present', 'subj_number', 'obj_number', 'odd_man_out', 'coordination_inversion']
         
         for task in tasks:
