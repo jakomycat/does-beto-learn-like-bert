@@ -11,9 +11,9 @@ def get_data_for_task(task_name, model, tokenizer, device, lang):
     data = load_probing_task(task_name, lang)
     
     # Get all cls tokens
-    X_train = get_cls_token(data['train']['sentences'], model, tokenizer, device, task_name, 'train')
-    X_val = get_cls_token(data['val']['sentences'],   model, tokenizer, device, task_name, 'val')
-    X_test = get_cls_token(data['test']['sentences'],  model, tokenizer, device, task_name, 'test')
+    X_train = get_cls_token(data['train']['sentences'], model, tokenizer, device, task_name, 'train', lang)
+    X_val = get_cls_token(data['val']['sentences'],   model, tokenizer, device, task_name, 'val', lang)
+    X_test = get_cls_token(data['test']['sentences'],  model, tokenizer, device, task_name, 'test', lang)
 
     y_train = np.array(data['train']['labels'])
     y_val = np.array(data['val']['labels'])
