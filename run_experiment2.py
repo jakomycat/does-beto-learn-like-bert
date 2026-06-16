@@ -20,7 +20,7 @@ def get_data_for_task(task_name, model, tokenizer, device, lang):
     y_test = np.array(data['test']['labels'])
     
     # Train and evaluate
-    num_classes = len(set(y_train))
+    num_classes = int(max(y_train.max(), y_val.max(), y_test.max())) + 1
 
     if lang == 'en':
         model_name = 'bert'
