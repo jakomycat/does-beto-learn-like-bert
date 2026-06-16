@@ -39,28 +39,35 @@ def download_xprobe_data(task_name, lang):
             print(f'Network error while downloading \'{split}\' for \'{task_name}\': {e}')
         
 # Function to read SentEval's file and get train, test, validation
-def read_senteval_file(task_name):
+def read_xprobe_file(task_name, lang):
     base = Path(__file__).resolve()
-    senteval_route = base.parent.parent.parent / 'data' / 'SentEval' / f'{task_name}.txt'
+    xprobe_dir = base.parent.parent.parent / 'data' / 'xprobe' / lang / task_name
     
-    train, test, validation = {'data':[], 'labels':[]}, {'data':[], 'labels':[]}, {'data':[], 'labels':[]}
-    with open(senteval_route, 'r', encoding='utf-8') as f:
-        for line in f:
-            split_type, label, text = line.split('\t') # This return a list with 3 elements
+    splits_data = {
+        'tr': {'data': [], 'labels': []},
+        'va': {'data': [], 'labels': []},
+        'te': {'data': [], 'labels': []}
+    }
+    
+    for split, dataset in splits_data.items():
+        file_path = xprobe_dir / f'{split}.txt'
+        
+        if not file_path.exists():
+            continue
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                parts = line.rstrip('\n').split('\t')
+                
+            if len(parts) == 2:
+                label, text = parts
+            else:
+                continue
             
-            if split_type == 'tr':
-                train['data'].append(text.replace('\n', ''))
-                train['labels'].append(label)
-                
-            elif split_type == 'va':
-                validation['data'].append(text.replace('\n', ''))
-                validation['labels'].append(label)
-                
-            elif split_type == 'te':
-                test['data'].append(text.replace('\n', ''))
-                test['labels'].append(label)
-    
-    return train, test, validation
+            dataset['data'].append(text)
+            dataset['labels'].append(label)
+            
+    return splits_data['tr'], splits_data['te'], splits_data['va']
 
 # Function to
 def encode_labels(train_labels, test_labels, validation_labels):
