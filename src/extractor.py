@@ -88,9 +88,9 @@ def get_span_representation(span_samples, model, tokenizer, device):
     return representations
 
 # Function to get [CLS] token
-def get_cls_token(sentences, model, tokenizer, device, task_name, split, batch_size=32, is_split_into_words=False):
+def get_cls_token(sentences, model, tokenizer, device, task_name, split, lang, batch_size=32, is_split_into_words=False):
     base = Path(__file__).resolve()
-    route = base.parent.parent / 'data' / 'cls_tokens' / f'cls_tokens_{task_name}_{split}.h5'
+    route = base.parent.parent / 'data' / 'cls_tokens' / f'cls_tokens_{lang}_{task_name}_{split}.h5'
 
     route.parent.mkdir(parents=True, exist_ok=True)
 
