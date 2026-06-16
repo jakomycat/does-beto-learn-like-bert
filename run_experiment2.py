@@ -2,7 +2,7 @@ import torch
 import argparse
 import numpy as np
 
-from src.extractor import load_model_and_tokenizer, get_cls_token
+from src.extractor import load_model_and_tokenizer, get_cls_token, set_seed
 from experiments.exp2_probing_task.data_pipeline import load_probing_task
 from experiments.exp2_probing_task.classifier import evaluate_all_layers
 
@@ -38,6 +38,8 @@ def get_data_for_task(task_name, model, tokenizer, device, lang):
     )
 
 def main():
+    set_seed(42)
+    
     parser = argparse.ArgumentParser()
     
     parser.add_argument( # BERT or BETO
@@ -48,7 +50,7 @@ def main():
     
     parser.add_argument(
         '--full_run',
-        type=bool,
+        action=argparse.BooleanOptionalAction,
         default=True
     )
     
