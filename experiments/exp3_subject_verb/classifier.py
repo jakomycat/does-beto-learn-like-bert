@@ -1,11 +1,11 @@
 import torch
 
+from src.extractor import set_seed
 from sklearn.metrics import accuracy_score
 
 from pathlib import Path
 import pandas as pd
 import h5py
-import numpy as np
 import gc
 
 from experiments.exp2_probing_task.classifier import ProbeClassifier, create_dataloader, train_probe # To reuse code
@@ -31,7 +31,7 @@ def evaluate_by_buckets(model, X_test_layer, y_test, buckets, device):
             
     return bucket_results
 
-def run_full_sva_evaluation(X_train_path, y_train, X_val_path, y_val, X_test_path, y_test, buckets, num_classes, device, output_filename):
+def run_full_sva_evaluation(X_train_path, y_train, X_val_path, y_val, X_test_path, y_test, buckets, num_classes, device, output_filename, seed=7):
     # It's only to know how many layers has the model
     with h5py.File(X_train_path, 'r') as f:
         _, num_layers, hidden_size = f['verb_outputs'].shape
@@ -39,6 +39,7 @@ def run_full_sva_evaluation(X_train_path, y_train, X_val_path, y_val, X_test_pat
     all_layer_data = []
 
     for layer_idx in range(num_layers):
+        set_seed(seed + layer_idx)
         print(f'Current layer: {layer_idx}')
         
         # Read train file
@@ -55,7 +56,7 @@ def run_full_sva_evaluation(X_train_path, y_train, X_val_path, y_val, X_test_pat
         
         # Model train
         model = ProbeClassifier(hidden_size, num_classes).to(device)
-        model = train_probe(model, train_loader, val_loader)
+        model = train_probe(model, train_loader, val_loader, layer_idx=layer_idx)
         del train_loader, val_loader
         
         # Evaluation
