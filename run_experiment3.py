@@ -22,7 +22,7 @@ def main():
     model, tokenizer = load_model_and_tokenizer(lang=lang, device=device)
     
     # Get data
-    data, _ = run_full_pipeline(tokenizer)
+    data, _ = run_full_pipeline(tokenizer, lang)
     
     buckets = create_difficulty_buckets(data['test'])
     
