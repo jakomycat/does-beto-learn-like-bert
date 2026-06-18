@@ -192,8 +192,8 @@ def run_full_pipeline(tokenizer, lang):
     elif lang == 'es':
         datasets = load_and_split_data_es(train_size=0.09, valid_size=0.01)
         
-    datasets = create_binary_labels(datasets)
-    datasets = align_and_mask_datasets(datasets, tokenizer)
+    datasets = create_binary_labels(datasets, lang)
+    datasets = align_and_mask_datasets(datasets, tokenizer, lang)
     
     # Reset index
     for split in ['train', 'valid', 'test']:

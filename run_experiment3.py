@@ -27,13 +27,13 @@ def main():
     buckets = create_difficulty_buckets(data['test'])
     
     # Get verb features
-    X_train_path = extract_verb_features(data['train']['bert_input_ids'], data['train']['verb_token_index'], model, tokenizer, device, 'train')
+    X_train_path = extract_verb_features(data['train']['bert_input_ids'], data['train']['verb_token_index'], model, tokenizer, device, 'train', lang)
     y_train = data['train']['label'].values
     
-    X_val_path = extract_verb_features(data['valid']['bert_input_ids'], data['valid']['verb_token_index'], model, tokenizer, device, 'val')
+    X_val_path = extract_verb_features(data['valid']['bert_input_ids'], data['valid']['verb_token_index'], model, tokenizer, device, 'val', lang)
     y_val = data['valid']['label'].values
     
-    X_test_path = extract_verb_features(data['test']['bert_input_ids'], data['test']['verb_token_index'], model, tokenizer, device, 'test')
+    X_test_path = extract_verb_features(data['test']['bert_input_ids'], data['test']['verb_token_index'], model, tokenizer, device, 'test', lang)
     y_test = data['test']['label'].values
     
     # Run probing
