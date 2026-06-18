@@ -162,11 +162,11 @@ def get_cls_token(sentences, model, tokenizer, device, task_name, split, lang, b
         return f['cls_tokens'][:]
     
 # Function to extract the [Mask] token vectors from each layer
-def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, device, split, batch_size=32):
+def extract_verb_features(input_ids_list, verb_idx_list, model, tokenizer, device, split, lang, batch_size=32):
     verb_idx_list = list(verb_idx_list)
 
     base = Path(__file__).resolve()
-    route = base.parent.parent / 'data' / 'features' / f'sva_features_{split}.h5'
+    route = base.parent.parent / 'data' / 'features' / f'sva_features_{lang}_{split}.h5'
     route.parent.mkdir(parents=True, exist_ok=True)
     
     n_layers = getattr(model.config, 'num_hidden_layers', 12) + 1
