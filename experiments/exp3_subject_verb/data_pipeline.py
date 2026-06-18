@@ -3,6 +3,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 import pandas as pd
+from scripts.generate_dataset_sva_es import run_ancora_sva_pipeline
 
 # Function to dowload dataset from dropbox
 def download_sva_dataset():
@@ -52,7 +53,41 @@ def load_and_split_data(train_size=0.05, valid_size=0.05, max_seq_len=50):
     sva_data['word_count'] = sva_data['orig_sentence'].str.split().str.len()
     sva_data = sva_data[sva_data['word_count'] <= max_seq_len].copy()
     
-    sva_data = sva_data.sample(frac=1, random_state=123).reset_index(drop=True) # Shuffle data
+    sva_data = sva_data.sample(frac=1, random_state=7).reset_index(drop=True) # Shuffle data
+    
+    # Split
+    num_total = len(sva_data)
+    num_train = int(num_total * train_size)
+    num_valid = int(num_total * valid_size)
+    
+    train_df = sva_data.iloc[0:num_train]
+    valid_df = sva_data.iloc[num_train:num_train + num_valid]
+    test_df = sva_data.iloc[num_train + num_valid:]
+    
+    split_data = {
+        'train': train_df,
+        'valid': valid_df,
+        'test': test_df
+    }
+    
+    return split_data
+
+# Function to load data for BETO
+def load_and_split_data_es(train_size=0.05, valid_size=0.05):
+    base = Path(__file__).resolve()
+    data_route = base.parent.parent.parent / 'generated_data' / 'ancora_sva_es' / 'dataset_sva.csv'
+    
+    if not data_route.exists():
+        print(f'The file doesn\'t exist in {data_route}.')
+        print(f'Generating data...')
+        run_ancora_sva_pipeline()
+        
+    # Here ever you get the file
+    sva_data = pd.read_csv(data_route)
+    
+    # The data generated have max_lenght 50  
+    
+    sva_data = sva_data.sample(frac=1, random_state=7).reset_index(drop=True) # Shuffle data
     
     # Split
     num_total = len(sva_data)
@@ -137,10 +172,13 @@ def create_difficulty_buckets(test_df):
     
     return buckets
 
-def run_full_pipeline(tokenizer):
-    download_sva_dataset()
-    
-    datasets = load_and_split_data(train_size=0.09, valid_size=0.01) # Values as Jawahar et al. 2019 propose
+def run_full_pipeline(tokenizer, lang):
+    if lang == 'en':
+        download_sva_dataset()
+        datasets = load_and_split_data(train_size=0.09, valid_size=0.01) # Values as Jawahar et al. 2019 propose
+    elif lang == 'es':
+        datasets = load_and_split_data_es(train_size=0.09, valid_size=0.01)
+        
     datasets = create_binary_labels(datasets)
     datasets = align_and_mask_datasets(datasets, tokenizer)
     
