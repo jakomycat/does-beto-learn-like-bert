@@ -128,7 +128,12 @@ def create_binary_labels(datasets, lang):
     return datasets
 
 #
-def align_and_mask_datasets(datasets, tokenizer):
+def align_and_mask_datasets(datasets, tokenizer, lang):
+    if lang == 'en':
+        sent_col, vidx_col, offset = 'orig_sentence', 'verb_index', 1
+    elif lang == 'es':
+        sent_col, vidx_col, offset = 'sentence', 'verb_pos', 0
+    
     for split_name in datasets:
         df = datasets[split_name]
         
@@ -137,8 +142,8 @@ def align_and_mask_datasets(datasets, tokenizer):
 
         for _, row in tqdm(df.iterrows(), total=len(df), desc=f'Processing {split_name}'):
             # Get words and verb idx
-            words = row['orig_sentence'].split()
-            v_idx = int(row['verb_index']) - 1 
+            words = row[sent_col].split()
+            v_idx = int(row[vidx_col]) - offset
             
             # Tokenization
             encoding = tokenizer(
