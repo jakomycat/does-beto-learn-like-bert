@@ -147,12 +147,14 @@ def evaluate_mse(tpdn, dataloader, device):
 
 # Function to map raw text/tuple roles to vocabulary integer IDs
 def map_roles_to_ids(raw_roles_list, role_to_id):
+    # OOV roles fall back to the reserved <unk> id (0 if present, else 0).
+    unk_id = role_to_id.get('<unk>', 0)
     mapped_corpus = []
     for sentence_roles in raw_roles_list:
-        
-        mapped_sentence = [role_to_id.get(role, 0) for role in sentence_roles]
+
+        mapped_sentence = [role_to_id.get(role, unk_id) for role in sentence_roles]
         mapped_corpus.append(mapped_sentence)
-        
+
     return mapped_corpus
 
 # Function to run the full evaluation across schemes, layers, and seeds
