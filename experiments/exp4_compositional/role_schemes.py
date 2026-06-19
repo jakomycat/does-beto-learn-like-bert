@@ -1,4 +1,5 @@
 import random
+from tqdm import tqdm
 
 # Function to add left-to-right role
 def left_to_right(words):
@@ -103,22 +104,26 @@ def tree_roles(consituency_tree, words, max_depth=None):
     return roles
 
 # Function to pre-parse tree roles using Stanza in batch
-def preparse_tree_roles(sentences, nlp, max_depth=None):
-    # Process entire batch
-    doc = nlp(sentences)
-    
-    if len(doc.sentences) != len(sentences):
-        raise ValueError(
-            f'Stanza mismatch. Expected {len(sentences)} sentences, but got {len(doc.sentences)}.'
-        )
-        
+def preparse_tree_roles(sentences, nlp, max_depth=None, chunk_size=50):
     corpus_roles = []
-    for i, sent in enumerate(doc.sentences):
-        words = sentences[i]
-        tree = sent.constituency
-        roles = tree_roles(tree, words, max_depth=max_depth)
-        corpus_roles.append(roles)
-        
+
+    # Process in small chunks
+    for start in tqdm(range(0, len(sentences), chunk_size), desc='Parsing trees (Stanza)'):
+        chunk = sentences[start:start + chunk_size]
+        doc = nlp(chunk)
+
+        if len(doc.sentences) != len(chunk):
+            raise ValueError(
+                f'Stanza mismatch in chunk starting at {start}. '
+                f'Expected {len(chunk)} sentences, but got {len(doc.sentences)}.'
+            )
+
+        for i, sent in enumerate(doc.sentences):
+            words = chunk[i]
+            tree = sent.constituency
+            roles = tree_roles(tree, words, max_depth=max_depth)
+            corpus_roles.append(roles)
+
     return corpus_roles
 
 # Function to map roles into indices
@@ -128,10 +133,13 @@ def build_role_vocab(corpus_roles):
         flat_roles = [role for sentence_roles in corpus_roles for role in sentence_roles]
     else:
         flat_roles = corpus_roles
-        
+
     unique_roles = set(flat_roles)
     sort_unique_roles = sorted(list(unique_roles)) # It's to reproducibility
-    
-    role_to_id = {role: idx for idx, role in enumerate(sort_unique_roles)}
-    
+
+    # Reserve id 0 for <unk>
+    role_to_id = {'<unk>': 0}
+    for idx, role in enumerate(sort_unique_roles, start=1):
+        role_to_id[role] = idx
+
     return role_to_id
