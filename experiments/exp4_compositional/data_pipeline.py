@@ -55,18 +55,22 @@ def _build_es_pool(max_len, target_size=20000, seed=42, test_ratio=0.2):
     
     return _ES_POOL_CACHE
 
-# Function to load SNLI dataset
-def load_premises(split, max_len=20, max_samples=10):
-    dataset = load_dataset('snli', split=split)
-    
-    dataset_premise = dataset['premise']
-    dataset_premise = list(dict.fromkeys(dataset_premise)) # Only uniques
-    
-    # Filter by length
-    dataset_filter = [sentence for sentence in dataset_premise if (len(sentence.split()) <= max_len)]
-    
+# Function to load premises
+def load_premises(split, lang='en', max_len=20, max_samples=10, target_size=20000):
+    if lang == 'en':
+        dataset = load_dataset('snli', split=split)
+
+        dataset_premise = dataset['premise']
+        dataset_premise = list(dict.fromkeys(dataset_premise))  # Only uniques
+
+        # Filter by length
+        dataset_filter = [s for s in dataset_premise if len(s.split()) <= max_len]
+    elif lang == 'es':
+        pool = _build_es_pool(max_len=max_len, target_size=target_size)
+        dataset_filter = pool[split]
+
     # Trim the list (Only to test)
     if max_samples is not None:
         dataset_filter = dataset_filter[:max_samples]
-    
+
     return dataset_filter
