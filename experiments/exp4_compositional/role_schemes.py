@@ -66,35 +66,33 @@ def random_tree_roles(words, seed=123, max_depth=None):
 # Function to add tree role
 def tree_roles(consituency_tree, words, max_depth=None):
     roles = []
-    
-    # Recursive function
+
+    def _walk_children(children, current_path):
+        # Binarize a list of sibling subtrees, right-branching.
+        k = len(children)
+        if k == 1:
+            _walk(children[0], current_path)
+        else:
+            # first child -> L ; rest -> R (recursively binarized)
+            _walk(children[0], current_path + 'L')
+            _walk_children(children[1:], current_path + 'R')
+
     def _walk(node, current_path):
-        # Base case
         if node.is_leaf():
-            # Truncate only at the leaf to collapse deep/rare structural roles
             final_path = current_path[:max_depth] if max_depth is not None else current_path
             roles.append(final_path)
             return
 
-        # Recursive case
         children = node.children
-        k = len(children)
-        
-        if k == 1:
+        if len(children) == 1:
+            # unary node: inherit path, no branching
             _walk(children[0], current_path)
-            
-        elif k >= 2:
-            for i, child in enumerate(children):
-                if i == (k - 1):
-                    next_path = current_path + ('R'*i)
-                else:
-                    next_path = current_path + ('R'*i) + 'L'
-                    
-                _walk(child, next_path)
+        else:
+            _walk_children(children, current_path)
 
     if consituency_tree:
         _walk(consituency_tree, '')
-        
+
     # Wheel alignment check
     if len(roles) != len(words):
         raise ValueError(
