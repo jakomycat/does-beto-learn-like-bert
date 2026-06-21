@@ -48,27 +48,27 @@ class TPDN(nn.Module):
     
 # Dataset for TPDN
 class TPDNDataset(Dataset):
-    def __init__(self, fillers_list, role_ids_list, targets):
-        assert len(fillers_list) == len(role_ids_list) == len(targets), f'Corpus mismatch: {len(fillers_list)} fillers, {len(role_ids_list)} roles, {len(targets)} targets.'
-        
-        self.fillers_list = fillers_list
+    def __init__(self, filler_ids_list, role_ids_list, targets):
+        assert len(filler_ids_list) == len(role_ids_list) == len(targets), f'Corpus mismatch: {len(filler_ids_list)} fillers, {len(role_ids_list)} roles, {len(targets)} targets.'
+
+        self.filler_ids_list = filler_ids_list
         self.role_ids_list = role_ids_list
         self.targets = targets
-        
+
     def __len__(self):
-        return len(self.fillers_list)
-    
+        return len(self.filler_ids_list)
+
     def __getitem__(self, idx):
-        filler = self.fillers_list[idx]
+        filler_id = self.filler_ids_list[idx]
         role_id = self.role_ids_list[idx]
         target = self.targets[idx]
-        
-        filler_tensor = torch.tensor(filler, dtype=torch.float32)
+
+        filler_tensor = torch.tensor(filler_id, dtype=torch.long)
         role_tensor = torch.tensor(role_id, dtype=torch.long)
         target_tensor = torch.tensor(target, dtype=torch.float32)
-        
+
         return {
-                'fillers': filler_tensor,
+                'filler_ids': filler_tensor,
                 'role_ids': role_tensor,
                 'targets': target_tensor
             }
