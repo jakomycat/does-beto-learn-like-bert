@@ -159,12 +159,12 @@ def evaluate_mse(tpdn, dataloader, device):
     with torch.no_grad():
         for batch in dataloader:
             # Extract components
-            fillers = batch['fillers'].to(device, dtype=torch.float32)
+            filler_ids = batch['filler_ids'].to(device, dtype=torch.long)
             role_ids = batch['role_ids'].to(device, dtype=torch.long)
             attention_mask = batch['attention_mask'].to(device, dtype=torch.float32)
             targets = batch['targets'].to(device, dtype=torch.float32)
-            
-            preds = tpdn(fillers, role_ids, attention_mask)
+ 
+            preds = tpdn(filler_ids, role_ids, attention_mask)
             loss = criterion(preds, targets)
             
             current_batch_size = targets.size(0)
@@ -175,7 +175,7 @@ def evaluate_mse(tpdn, dataloader, device):
     global_mse = total_error_weighted / total_sentences
     
     return global_mse
-
+ 
 # Function to map raw text/tuple roles to vocabulary integer IDs
 def map_roles_to_ids(raw_roles_list, role_to_id):
     # OOV roles fall back to the reserved <unk> id (0 if present, else 0).
