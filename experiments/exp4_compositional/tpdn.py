@@ -75,27 +75,27 @@ class TPDNDataset(Dataset):
 
 # Custom function for TPDNDataset
 def tpdn_collate_fn(batch):
-    fillers_list = [item['fillers'] for item in batch]
+    filler_ids_list = [item['filler_ids'] for item in batch]
     role_ids_list = [item['role_ids'] for item in batch]
     targets_list = [item['targets'] for item in batch]
-    
+
     lengths = torch.tensor([len(r) for r in role_ids_list])
-    
-    # Fill the vectors
-    fillers_padded = pad_sequence(fillers_list, batch_first=True, padding_value=0.0)
+
+    # Pad sequences (filler id 0 and role id 0 are padding; masked out in forward)
+    filler_ids_padded = pad_sequence(filler_ids_list, batch_first=True, padding_value=0)
     role_ids_padded = pad_sequence(role_ids_list, batch_first=True, padding_value=0)
-    
+
     batch_size = len(batch)
     w_max = role_ids_padded.shape[1]
-    
-    # Here important words are marked with a 1, otherwise a 0
+
+    # Real tokens marked with 1, padding with 0
     attention_mask = torch.arange(w_max).expand(batch_size, w_max) < lengths.unsqueeze(1)
     attention_mask = attention_mask.float()
-    
+
     targets_stacked = torch.stack(targets_list)
-    
+
     return {
-        'fillers': fillers_padded,
+        'filler_ids': filler_ids_padded,
         'role_ids': role_ids_padded,
         'attention_mask': attention_mask,
         'targets': targets_stacked
