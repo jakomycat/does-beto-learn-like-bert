@@ -189,85 +189,96 @@ def map_roles_to_ids(raw_roles_list, role_to_id):
     return mapped_corpus
 
 # Function to run the full evaluation across schemes, layers, and seeds
-def run_tpdn_evaluation(fillers_train, fillers_test, targets_train, targets_test, sentences_train, sentences_test,
+def run_tpdn_evaluation(filler_ids_train, filler_ids_test, targets_train, targets_test,
+                        sentences_train, sentences_test,
                         role_schemes_dict, build_vocab_fn, map_roles_fn,
-                        seeds=[42, 43, 44, 45, 46], role_dim=20, n_epochs=10, lr=1e-3, batch_size=32, device='cuda',
+                        n_fillers, pretrained_filler_weight=None,
+                        seeds=[42, 43, 44, 45, 46], role_dim=20, filler_dim=768,
+                        n_epochs=100, lr=1e-3, batch_size=32, patience=10,
+                        val_ratio=0.1, device='cuda',
                         output_filename='tpdn_table4_results'):
     # Config
     device = torch.device(device if torch.cuda.is_available() else 'cpu')
     n_layers = targets_train.shape[1]
-    filler_dim = fillers_train[0].shape[1]
-    
+    if pretrained_filler_weight is not None:
+        filler_dim = pretrained_filler_weight.shape[1]
+ 
     results_flat = []
-    
+ 
+    # Carve out a fixed validation split from train (for early stopping)
+    n_train_total = len(filler_ids_train)
+    n_val = max(1, int(n_train_total * val_ratio))
+    rng = np.random.RandomState(0)
+    perm = rng.permutation(n_train_total)
+    val_idx = set(perm[:n_val].tolist())
+    tr_idx = [i for i in range(n_train_total) if i not in val_idx]
+    va_idx = [i for i in range(n_train_total) if i in val_idx]
+ 
     # Loop over role schemes
     for scheme_name, scheme_fn in role_schemes_dict.items():
         print(f'Processing scheme: {scheme_name}')
-        
+ 
         # Generate raw roles
         raw_roles_train = [scheme_fn(sent) for sent in sentences_train]
         raw_roles_test = [scheme_fn(sent) for sent in sentences_test]
-        
-        # Build vocabulary using train set
-        role_to_id = build_vocab_fn(raw_roles_train)
+ 
+        # Build role vocabulary over train+test
+        role_to_id = build_vocab_fn(raw_roles_train + raw_roles_test)
         n_roles = len(role_to_id)
-        
+ 
         # Map raw roles to numerical IDs
-        role_ids_train = map_roles_fn(raw_roles_train, role_to_id)
+        role_ids_train_all = map_roles_fn(raw_roles_train, role_to_id)
         role_ids_test = map_roles_fn(raw_roles_test, role_to_id)
-        
+ 
         # Loop over BERT layers
         for layer_idx in range(n_layers):
             # Slice targets for the specific layer
-            layer_targets_train = targets_train[:, layer_idx, :]
+            layer_targets_train_all = targets_train[:, layer_idx, :]
             layer_targets_test = targets_test[:, layer_idx, :]
-            
-            # Create Datasets
-            train_dataset = TPDNDataset(fillers_train, role_ids_train, layer_targets_train)
-            test_dataset = TPDNDataset(fillers_test, role_ids_test, layer_targets_test)
-            
-            # Create DataLoaders
-            train_loader = DataLoader(
-                train_dataset,
-                batch_size=batch_size,
-                shuffle=True,
-                collate_fn=tpdn_collate_fn
-            )
-            test_loader = DataLoader(
-                test_dataset,
-                batch_size=batch_size,
-                shuffle=False,
-                collate_fn=tpdn_collate_fn
-            )
-            
+ 
+            # Split train into train/val (by fixed indices)
+            f_tr = [filler_ids_train[i] for i in tr_idx]
+            r_tr = [role_ids_train_all[i] for i in tr_idx]
+            t_tr = layer_targets_train_all[tr_idx]
+ 
+            f_va = [filler_ids_train[i] for i in va_idx]
+            r_va = [role_ids_train_all[i] for i in va_idx]
+            t_va = layer_targets_train_all[va_idx]
+ 
+            train_dataset = TPDNDataset(f_tr, r_tr, t_tr)
+            val_dataset = TPDNDataset(f_va, r_va, t_va)
+            test_dataset = TPDNDataset(filler_ids_test, role_ids_test, layer_targets_test)
+ 
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=tpdn_collate_fn)
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=tpdn_collate_fn)
+            test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=tpdn_collate_fn)
+ 
             layer_seed_mses = []
-            
+ 
             # Loop over seeds
             for seed in seeds:
-                # Set seed for reproducibility
                 torch.manual_seed(seed)
                 if torch.cuda.is_available():
                     torch.cuda.manual_seed_all(seed)
-                    
-                # Instantiate model
+ 
                 model = TPDN(
                     n_roles=n_roles,
                     role_dim=role_dim,
+                    filler_vocab_size=n_fillers,
                     filler_dim=filler_dim,
-                    output_dim=filler_dim
+                    output_dim=targets_train.shape[2],
+                    pretrained_filler_weight=pretrained_filler_weight
                 )
-                
-                # Train model
-                model = train_tpdn(model, train_loader, device, n_epochs=n_epochs, lr=lr)
-                
-                # Evaluate MSE
+ 
+                model = train_tpdn(model, train_loader, device, val_loader=val_loader,
+                                   n_epochs=n_epochs, lr=lr, patience=patience)
+ 
                 seed_mse = evaluate_mse(model, test_loader, device)
                 layer_seed_mses.append(seed_mse)
-                
-            # Calculate mean and std over seeds
+ 
             mean_mse = np.mean(layer_seed_mses)
             std_mse = np.std(layer_seed_mses)
-            
+ 
             results_flat.append({
                 'scheme': scheme_name,
                 'layer': layer_idx,
