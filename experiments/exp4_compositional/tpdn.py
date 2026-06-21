@@ -101,37 +101,50 @@ def tpdn_collate_fn(batch):
         'targets': targets_stacked
     }
     
-# Function to train TPDN
-def train_tpdn(tpdn, dataloader, device, n_epochs=10, lr=1e-3):
-    # Config
-    tpdn = tpdn.to(device) 
-    tpdn.train()
-    
-    optimizer = Adam(tpdn.parameters(), lr=lr)
+# Function to train TPDN (with early stopping on a validation set)
+def train_tpdn(tpdn, dataloader, device, val_loader=None, n_epochs=100, lr=1e-3, patience=10):
+    import copy
+
+    tpdn = tpdn.to(device)
+    optimizer = Adam([p for p in tpdn.parameters() if p.requires_grad], lr=lr)
     criterion = nn.MSELoss()
-    
+
+    best_val = float('inf')
+    best_state = copy.deepcopy(tpdn.state_dict())
+    epochs_no_improve = 0
+
     for epoch in range(n_epochs):
-        total_loss = 0.0
-        
-        batch_iterator = tqdm(dataloader, desc=f'Epoch {epoch + 1} / {n_epochs}')
+        tpdn.train()
+        batch_iterator = tqdm(dataloader, desc=f'Epoch {epoch + 1} / {n_epochs}', leave=False)
         for batch in batch_iterator:
-            fillers = batch['fillers'].to(device, dtype=torch.float32)
+            filler_ids = batch['filler_ids'].to(device, dtype=torch.long)
             role_ids = batch['role_ids'].to(device, dtype=torch.long)
             attention_mask = batch['attention_mask'].to(device, dtype=torch.float32)
             targets = batch['targets'].to(device, dtype=torch.float32)
-            
+
             optimizer.zero_grad()
-            
-            preds = tpdn(fillers, role_ids, attention_mask)
+            preds = tpdn(filler_ids, role_ids, attention_mask)
             loss = criterion(preds, targets)
-            
             loss.backward()
             optimizer.step()
-            
-            total_loss += loss.item()
-            
-            batch_iterator.set_postfix({'loss' : f'{loss.item():.4f}'})
-        
+            batch_iterator.set_postfix({'loss': f'{loss.item():.4f}'})
+
+        # Early stopping on validation MSE
+        if val_loader is not None:
+            val_mse = evaluate_mse(tpdn, val_loader, device)
+            if val_mse < best_val:
+                best_val = val_mse
+                best_state = copy.deepcopy(tpdn.state_dict())
+                epochs_no_improve = 0
+            else:
+                epochs_no_improve += 1
+                if epochs_no_improve >= patience:
+                    break
+
+    # Restore best checkpoint (by validation loss)
+    if val_loader is not None:
+        tpdn.load_state_dict(best_state)
+
     return tpdn
 
 # Function to calculate MSE
