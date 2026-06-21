@@ -313,3 +313,42 @@ def get_filler_embeddings(sentences, model, tokenizer, device, batch_size=32):
             all_word_embeddings.append(np.array(sentence_fillers))
             
     return all_word_embeddings
+
+def get_word_embedding_matrix(model):
+    w = model.get_input_embeddings().weight.detach().cpu().float().clone()
+    
+    return w
+
+def get_filler_token_ids(sentences, tokenizer, batch_size=32):
+    all_ids = []
+    for i in range(0, len(sentences), batch_size):
+        batch_sentences = sentences[i : i + batch_size]
+        inputs = tokenizer(
+            batch_sentences,
+            is_split_into_words=True,
+            return_tensors='pt',
+            padding=True,
+            truncation=True,
+            max_length=tokenizer.model_max_length
+        )
+        input_ids = inputs['input_ids']
+        for b in range(len(batch_sentences)):
+            word_ids = inputs.word_ids(batch_index=b)
+            num_words = len(batch_sentences[b])
+            first_subtok = {}
+            for tok_pos, wid in enumerate(word_ids):
+                if wid is not None and wid not in first_subtok:
+                    first_subtok[wid] = int(input_ids[b, tok_pos].item())
+            sent_ids = []
+            for wid in range(num_words):
+                if wid in first_subtok:
+                    sent_ids.append(first_subtok[wid])
+                else:
+                    # word got truncated away
+                    raise ValueError(
+                        f'Filler token-id misalignment at sentence {i + b}: '
+                        f'{num_words} words but word {wid} has no subtoken '
+                        f'(probably truncated by max_length).'
+                    )
+            all_ids.append(sent_ids)
+    return all_ids
