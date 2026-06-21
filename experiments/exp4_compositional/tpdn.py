@@ -9,23 +9,41 @@ import pandas as pd
 from pathlib import Path
 
 class TPDN(nn.Module):
-    def __init__(self, n_roles, role_dim, filler_dim, output_dim):
+    def __init__(self, n_roles, role_dim, filler_vocab_size, filler_dim, output_dim, pretrained_filler_weight=None):
         super().__init__()
-        
+
+        # Role embedding (trainable)
         self.role_embedding = nn.Embedding(n_roles, role_dim)
-        self.projection = nn.Linear(in_features=filler_dim*role_dim, out_features=output_dim)
+
+        # Filler embedding: frozen pretrained word embeddings + trainable linear projection
+        self.filler_embedding = nn.Embedding(filler_vocab_size, filler_dim)
         
-    def forward(self, fillers, role_ids, attention_mask):
+        if pretrained_filler_weight is not None:
+            self.filler_embedding.weight.data = pretrained_filler_weight.float()
+            
+        self.filler_embedding.weight.requires_grad = False  # freeze, like McCoy/Jawahar
+        self.filler_projection = nn.Linear(filler_dim, filler_dim)
+
+        self.projection = nn.Linear(in_features=filler_dim * role_dim, out_features=output_dim)
+
+    def forward(self, filler_ids, role_ids, attention_mask):
+        # Static filler representation: frozen embed -> learned linear projection
+        fillers = self.filler_embedding(filler_ids)
+        fillers = self.filler_projection(fillers)
+
         role_vecs = self.role_embedding(role_ids)
-        
+
+        # Mask padding on BOTH fillers and roles so padded positions contribute 0
         mask_expanded = attention_mask.unsqueeze(-1).float()
-        fillers_masked = fillers*mask_expanded
-        
-        tpr_sum = torch.einsum('bwf, bwr -> bfr', fillers_masked, role_vecs)
+        fillers_masked = fillers * mask_expanded
+        role_vecs_masked = role_vecs * mask_expanded
+
+        # Tensor product, then flatten
+        tpr_sum = torch.einsum('bwf, bwr -> bfr', fillers_masked, role_vecs_masked)
         tpr_flat = tpr_sum.flatten(start_dim=1)
-        
+
         output = self.projection(tpr_flat)
-        
+
         return output
     
 # Dataset for TPDN
