@@ -58,7 +58,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model, tokenizer = load_model_and_tokenizer(lang=lang, device=device)
     
-    # Get CoNLL-2000 data processed
+    # Get dataset
     data = get_phrasal_data(lang=lang, n_chunks=n_chunks, n_no_chunks=n_no_chunks, use_original=original, seed=seed)
     
     # Get span representation
